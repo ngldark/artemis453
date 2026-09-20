@@ -142,3 +142,36 @@
     color: var(--color-foreground);
   }
 }
+
+/* ---- Paleta Escoteira: azul institucional, verde folha, amarelo dourado ---- */
+:root {
+  --background: oklch(0.985 0.008 120);
+  --foreground: oklch(0.24 0.045 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.045 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.045 250);
+  --primary: oklch(0.45 0.13 250);
+  --primary-foreground: oklch(0.99 0.01 250);
+  --secondary: oklch(0.93 0.05 140);
+  --secondary-foreground: oklch(0.3 0.08 150);
+  --muted: oklch(0.955 0.012 150);
+  --muted-foreground: oklch(0.5 0.03 220);
+  --accent: oklch(0.86 0.15 92);
+  --accent-foreground: oklch(0.3 0.06 80);
+  --border: oklch(0.9 0.02 200);
+  --input: oklch(0.9 0.02 200);
+  --ring: oklch(0.55 0.12 250);
+  --leaf: oklch(0.55 0.13 148);
+  --leaf-foreground: oklch(0.99 0.01 150);
+  --gold: oklch(0.8 0.15 88);
+  --gold-foreground: oklch(0.3 0.07 80);
+  --radius: 0.85rem;
+}
+
+@theme inline {
+  --color-leaf: var(--leaf);
+  --color-leaf-foreground: var(--leaf-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+}
