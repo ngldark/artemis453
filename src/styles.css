@@ -185,7 +185,7 @@
   --muted: #F1F5F9;
   --muted-foreground: #64748B;
   
-  --accent: #FFC72C;                  /* Destaque / Amarelo */
+  --accent: #33b8a8;                  /* Destaque / Amarelo */
   --accent-foreground: #1E293B;
   
   --border: #E2E8F0;
@@ -194,7 +194,7 @@
 
   --leaf: #006B3F;                    /* Verde Folha / Progresso */
   --leaf-foreground: #FFFFFF;
-  --gold: #FFC72C;                    /* Amarelo/Dourado do Lenço */
+  --gold: #33b8a8;                    /* Amarelo/Dourado do Lenço */
   --gold-foreground: #1E293B;
   --radius: 0.85rem;
 }
