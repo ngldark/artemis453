@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Circle, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchEixos,
   fetchBlocos,
@@ -150,9 +151,26 @@ function BlocoDialog({
   acoes: Acao[];
   onClose: () => void;
 }) {
-  const { perfil, jovemId, chefe, setChefe } = useAppState();
+  const { perfil, jovemId } = useAppState();
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
+  const [nomeChefe, setNomeChefe] = useState("Chefia");
+
+  // Identificar automaticamente a chefia logada pelo Supabase Auth
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const nomeMeta = user.user_metadata?.full_name || user.user_metadata?.name;
+        if (nomeMeta) {
+          setNomeChefe(nomeMeta);
+        } else if (user.email) {
+          const usuarioEmail = user.email.split("@")[0];
+          const formatado = usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1);
+          setNomeChefe(formatado);
+        }
+      }
+    });
+  }, []);
 
   const { data: progresso = [] } = useQuery({
     queryKey: ["acoes_progresso", jovemId],
@@ -164,7 +182,7 @@ function BlocoDialog({
     mutationFn: async ({ acaoId, feito }: { acaoId: string; feito: boolean }) => {
       if (!jovemId) return;
       if (feito) await desmarcarAcao(jovemId, acaoId);
-      else await marcarAcao({ jovemId, acaoId, data, validadoPor: chefe });
+      else await marcarAcao({ jovemId, acaoId, data, validadoPor: nomeChefe });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["acoes_progresso"] }),
     onError: (e: Error) => toast.error(e.message),
@@ -232,8 +250,10 @@ function BlocoDialog({
               <Input id="acao-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="acao-chefe">Validado por</Label>
-              <Input id="acao-chefe" value={chefe} onChange={(e) => setChefe(e.target.value)} placeholder="Nome do chefe" />
+              <Label>Validado por</Label>
+              <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                {nomeChefe} (automático)
+              </div>
             </div>
           </div>
         )}
