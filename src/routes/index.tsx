@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Award } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchAcolhidaCatalogo,
   fetchAcolhidaProgresso,
@@ -48,10 +49,28 @@ export const Route = createFileRoute("/")({
 });
 
 function Acolhida() {
-  const { perfil, jovemId, chefe, setChefe } = useAppState();
+  const { perfil, jovemId } = useAppState();
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
   const [dataPromessa, setDataPromessa] = useState(hoje());
+  const [nomeChefe, setNomeChefe] = useState("Chefia");
+
+  // Identificar automaticamente a chefia logada pelo Supabase Auth
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        // Pega o nome do metadado do usuário ou usa a parte antes do @ no e-mail
+        const nomeMeta = user.user_metadata?.full_name || user.user_metadata?.name;
+        if (nomeMeta) {
+          setNomeChefe(nomeMeta);
+        } else if (user.email) {
+          const usuarioEmail = user.email.split("@")[0];
+          const formatado = usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1);
+          setNomeChefe(formatado);
+        }
+      }
+    });
+  }, []);
 
   const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
   const { data: progresso = [] } = useQuery({
@@ -70,7 +89,7 @@ function Acolhida() {
     mutationFn: async (item: { id: string; feito: boolean }) => {
       if (!jovemId) return;
       if (item.feito) await desmarcarAcolhida(jovemId, item.id);
-      else await marcarAcolhida({ jovemId, itemId: item.id, data, validadoPor: chefe });
+      else await marcarAcolhida({ jovemId, itemId: item.id, data, validadoPor: nomeChefe });
     },
     onSuccess: invalidate,
     onError: (e: Error) => toast.error(e.message),
@@ -79,7 +98,7 @@ function Acolhida() {
   const promessa = useMutation({
     mutationFn: async () => {
       if (!jovemId) return;
-      await liberarPromessa(jovemId, chefe, dataPromessa);
+      await liberarPromessa(jovemId, nomeChefe, dataPromessa);
     },
     onSuccess: () => {
       invalidate();
@@ -132,13 +151,10 @@ function Acolhida() {
             <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="chefe">Validado por</Label>
-            <Input
-              id="chefe"
-              placeholder="Nome do chefe responsável"
-              value={chefe}
-              onChange={(e) => setChefe(e.target.value)}
-            />
+            <Label>Validado por</Label>
+            <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+              {nomeChefe} (automático)
+            </div>
           </div>
         </Card>
       )}
