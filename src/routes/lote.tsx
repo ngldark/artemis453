@@ -72,7 +72,7 @@ function Lote() {
   const lancar = useMutation({
     mutationFn: async () => {
       if (!alvo || selecionados.length === 0) throw new Error("Selecione o item e ao menos um jovem.");
-      const [tipo, id] = alvo.split(":");
+      const [tipo, id] = alvo.split(":") as [string, string];
       for (const jovemId of selecionados) {
         if (tipo === "acolhida") await marcarAcolhida({ jovemId, itemId: id, data, validadoPor: chefe });
         else await marcarAcao({ jovemId, acaoId: id, data, validadoPor: chefe });
