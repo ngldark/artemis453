@@ -117,7 +117,7 @@ function JovensPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{j.nome}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {j.patrulha ? `Patrulha ${j.patrulha}` : "Sem patrulha"}
+                    {j.patrulha ?? "Sem patrulha"}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
