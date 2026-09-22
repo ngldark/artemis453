@@ -144,7 +144,7 @@
 }
 
 /* ---- Paleta Escoteira: azul institucional, verde folha, amarelo dourado ---- */
-:root {
+/* :root {
   --background: oklch(0.985 0.008 120);
   --foreground: oklch(0.24 0.045 250);
   --card: oklch(1 0 0);
@@ -166,6 +166,36 @@
   --leaf-foreground: oklch(0.99 0.01 150);
   --gold: oklch(0.8 0.15 88);
   --gold-foreground: oklch(0.3 0.07 80);
+  --radius: 0.85rem;
+} */
+:root {
+  --background: #FAFAFA;
+  --foreground: #1E293B;
+  --card: #FFFFFF;
+  --card-foreground: #1E293B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E293B;
+  
+  --primary: #007466;                 /* Verde Escuro (Substituiu o Azul) */
+  --primary-foreground: #FFFFFF;      /* Texto do botão principal (Branco) */
+  
+  --secondary: #E8F5E9;               /* Verde Claro de fundo */
+  --secondary-foreground: #007466;     /* Texto nos botões secundários */
+  
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  
+  --accent: #FFC72C;                  /* Destaque / Amarelo */
+  --accent-foreground: #1E293B;
+  
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #007466;                    /* Anel de foco ao clicar */
+
+  --leaf: #006B3F;                    /* Verde Folha / Progresso */
+  --leaf-foreground: #FFFFFF;
+  --gold: #FFC72C;                    /* Amarelo/Dourado do Lenço */
+  --gold-foreground: #1E293B;
   --radius: 0.85rem;
 }
 
