@@ -77,11 +77,23 @@ function Acolhida() {
   const promessa = useMutation({
     mutationFn: async () => {
       if (!jovemId) return;
-      await liberarPromessa(jovemId, chefe, data);
+      await liberarPromessa(jovemId, chefe, dataPromessa);
     },
     onSuccess: () => {
       invalidate();
-      toast.success("Promessa Escoteira liberada!");
+      toast.success("Data da Promessa registrada — Eixos liberados!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remover = useMutation({
+    mutationFn: async () => {
+      if (!jovemId) return;
+      await removerPromessa(jovemId);
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Promessa desfeita.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -91,6 +103,10 @@ function Acolhida() {
   const pct = Math.round((feitos / total) * 100);
   const completo = feitos >= total && total > 0;
   const promessaLiberada = promessas.find((p) => p.jovem_id === jovemId);
+
+  useEffect(() => {
+    setDataPromessa(promessaLiberada?.liberada_em ?? hoje());
+  }, [promessaLiberada?.liberada_em, jovemId]);
 
   return (
     <div className="space-y-5">
