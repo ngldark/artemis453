@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
@@ -10,6 +10,7 @@ import {
   fetchBlocos,
   fetchAcoes,
   fetchAcoesProgresso,
+  fetchPromessas,
   marcarAcao,
   desmarcarAcao,
   formatarData,
@@ -62,6 +63,9 @@ function Eixos() {
     enabled: !!jovemId,
   });
 
+  const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
+  const promessa = promessas.find((p) => p.jovem_id === jovemId);
+
   const feitas = useMemo(() => new Set(progresso.map((p) => p.acao_id)), [progresso]);
 
   const statusBloco = (bloco: Bloco) => {
@@ -72,11 +76,28 @@ function Eixos() {
     return { label: "Não Iniciado", cls: "bg-muted text-muted-foreground" };
   };
 
+  if (jovemId && !promessa) {
+    return (
+      <Card className="gap-3 border-gold/50 bg-gold/10 p-6 text-center">
+        <Lock className="mx-auto h-6 w-6 text-gold-foreground" />
+        <p className="font-bold">Eixos bloqueados</p>
+        <p className="text-sm text-muted-foreground">
+          Os Eixos são liberados a partir da data da Promessa Escoteira. Registre a data da Promessa na tela de
+          Acolhida para começar.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">Eixos, Blocos e Ações</h1>
-        <p className="text-sm text-muted-foreground">Escolha um eixo para ver seus blocos.</p>
+        <p className="text-sm text-muted-foreground">
+          {promessa
+            ? `Liberados desde a Promessa em ${formatarData(promessa.liberada_em)}.`
+            : "Escolha um eixo para ver seus blocos."}
+        </p>
       </div>
 
       {eixos.length > 0 && (
