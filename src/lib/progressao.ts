@@ -147,6 +147,11 @@ export async function liberarPromessa(jovemId: string, liberadaPor: string, data
   if (error) throw error;
 }
 
+export async function removerPromessa(jovemId: string) {
+  const { error } = await supabase.from("promessas").delete().eq("jovem_id", jovemId);
+  if (error) throw error;
+}
+
 export const hoje = () => new Date().toISOString().slice(0, 10);
 
 export function formatarData(iso: string) {
