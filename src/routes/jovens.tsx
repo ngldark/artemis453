@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pencil, Plus, Trash2, UserPlus, Users, X } from "lucide-react";
@@ -7,7 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
 import { criarJovem, atualizarJovem, removerJovem, fetchJovens, type Jovem } from "@/lib/progressao";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
