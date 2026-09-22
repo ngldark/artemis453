@@ -6,11 +6,11 @@ import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const nav = [
+const nav: { to: "/" | "/eixos" | "/lote"; label: string; icon: typeof Users; chefeOnly?: boolean }[] = [
   { to: "/", label: "Acolhida", icon: ClipboardCheck },
   { to: "/eixos", label: "Eixos", icon: LayoutList },
   { to: "/lote", label: "Em Lote", icon: Users, chefeOnly: true },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
 
   useEffect(() => {
-    if (!jovemId && jovens.length > 0) setJovemId(jovens[0].id);
+    if (!jovemId && jovens[0]) setJovemId(jovens[0].id);
   }, [jovens, jovemId, setJovemId]);
 
   return (
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="mt-3">
-            <Select value={jovemId ?? undefined} onValueChange={setJovemId}>
+            <Select value={jovemId ?? ""} onValueChange={(v) => setJovemId(v)}>
               <SelectTrigger className="h-10 w-full border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
                 <SelectValue placeholder="Selecione o jovem" />
               </SelectTrigger>

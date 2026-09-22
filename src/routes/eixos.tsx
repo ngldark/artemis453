@@ -80,7 +80,7 @@ function Eixos() {
       </div>
 
       {eixos.length > 0 && (
-        <Tabs defaultValue={eixos[0].id}>
+        <Tabs defaultValue={eixos[0]!.id}>
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted p-1">
             {eixos.map((e) => (
               <TabsTrigger key={e.id} value={e.id} className="text-xs sm:text-sm">
