@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, Users, LayoutList, ClipboardCheck, UserPlus } from "lucide-react";
+import { Compass, Users, LayoutList, ClipboardCheck, UserPlus, LogOut } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
