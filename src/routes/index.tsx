@@ -190,25 +190,70 @@ function Acolhida() {
           <p className="font-bold">Promessa Escoteira</p>
         </div>
         {promessaLiberada ? (
-          <p className="text-sm">
-            Liberada em {formatarData(promessaLiberada.liberada_em)}
-            {promessaLiberada.liberada_por ? ` por ${promessaLiberada.liberada_por}` : ""}.
-          </p>
+          <>
+            <p className="text-sm">
+              Promessa feita em {formatarData(promessaLiberada.liberada_em)}
+              {perfil === "chefe" && promessaLiberada.liberada_por
+                ? ` · registrada por ${promessaLiberada.liberada_por}`
+                : ""}
+              . Os Eixos estão liberados.
+            </p>
+            {perfil === "chefe" && (
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="space-y-1.5">
+                  <Label htmlFor="data-promessa-edit">Data da Promessa</Label>
+                  <Input
+                    id="data-promessa-edit"
+                    type="date"
+                    value={dataPromessa}
+                    onChange={(e) => setDataPromessa(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-gold text-gold-foreground hover:bg-gold/90"
+                    disabled={!jovemId || promessa.isPending}
+                    onClick={() => promessa.mutate()}
+                  >
+                    Salvar data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!jovemId || remover.isPending}
+                    onClick={() => remover.mutate()}
+                  >
+                    Desfazer
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
               {completo
-                ? "Todos os 7 itens concluídos — a Promessa pode ser liberada."
-                : `Faltam ${total - feitos} item(ns) para liberar a Promessa.`}
+                ? "Todos os 7 itens concluídos — informe a data da Promessa para liberar os Eixos."
+                : `Faltam ${total - feitos} item(ns) para registrar a Promessa.`}
             </p>
             {perfil === "chefe" && (
-              <Button
-                className="bg-gold text-gold-foreground hover:bg-gold/90"
-                disabled={!completo || !jovemId || promessa.isPending}
-                onClick={() => promessa.mutate()}
-              >
-                Liberar Promessa Escoteira
-              </Button>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="space-y-1.5">
+                  <Label htmlFor="data-promessa">Data da Promessa</Label>
+                  <Input
+                    id="data-promessa"
+                    type="date"
+                    value={dataPromessa}
+                    onChange={(e) => setDataPromessa(e.target.value)}
+                  />
+                </div>
+                <Button
+                  className="bg-gold text-gold-foreground hover:bg-gold/90"
+                  disabled={!completo || !jovemId || !dataPromessa || promessa.isPending}
+                  onClick={() => promessa.mutate()}
+                >
+                  Registrar Promessa
+                </Button>
+              </div>
             )}
           </>
         )}
