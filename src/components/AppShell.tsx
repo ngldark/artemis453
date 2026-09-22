@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, Users, LayoutList, ClipboardCheck, UserPlus } from "lucide-react";
+import { Compass, Users, LayoutList, ClipboardCheck, UserPlus, LogOut } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +19,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
+  const queryClient = useQueryClient();
+
+  async function sair() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+  }
 
   useEffect(() => {
     if (!jovemId && jovens[0]) setJovemId(jovens[0].id);
@@ -48,6 +57,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className={`rounded-full px-3 py-1.5 transition ${perfil === "chefe" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
               >
                 Chefe
+              </button>
+              <button
+                onClick={sair}
+                aria-label="Sair"
+                title="Sair"
+                className="rounded-full px-3 py-1.5 text-primary-foreground/80 transition hover:text-primary-foreground"
+              >
+                <LogOut className="h-4 w-4" />
               </button>
             </div>
           </div>
