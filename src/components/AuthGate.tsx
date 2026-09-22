@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [modo, setModo] = useState<"entrar" | "criar">("entrar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -32,20 +31,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     e.preventDefault();
     setEnviando(true);
     try {
-      if (modo === "entrar") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: senha,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        if (!data.session) toast.success("Confira seu e-mail para confirmar o cadastro.");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (error) throw error;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
+      toast.error(err instanceof Error ? err.message : "Não foi possível entrar. Verifique suas credenciais.");
     } finally {
       setEnviando(false);
     }
@@ -74,14 +63,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </span>
           <div>
             <p className="text-base font-bold leading-tight">Progressão Escoteira</p>
-            <p className="text-xs text-muted-foreground">Acesso restrito à chefia</p>
+            <p className="text-xs font-semibold text-primary">Tropa Artemis</p>
           </div>
         </div>
 
         <form onSubmit={submeter} className="mt-6 space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="senha">Senha</Label>
@@ -89,13 +78,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
               id="senha"
               type="password"
               required
-              minLength={6}
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              placeholder="••••••"
             />
           </div>
           <Button type="submit" className="w-full" disabled={enviando}>
-            {modo === "entrar" ? "Entrar" : "Criar conta"}
+            {enviando ? "Entrando..." : "Entrar"}
           </Button>
         </form>
 
@@ -103,13 +92,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
           Entrar com Google
         </Button>
 
-        <button
-          type="button"
-          onClick={() => setModo(modo === "entrar" ? "criar" : "entrar")}
-          className="mt-4 w-full text-center text-xs text-muted-foreground underline"
-        >
-          {modo === "entrar" ? "Não tem conta? Criar conta" : "Já tem conta? Entrar"}
-        </button>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Acesso exclusivo para membros da Tropa Artemis.
+        </p>
       </div>
     </div>
   );
