@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, Users, LayoutList, ClipboardCheck } from "lucide-react";
+import { Compass, Users, LayoutList, ClipboardCheck, UserPlus } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
