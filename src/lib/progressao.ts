@@ -152,6 +152,21 @@ export async function removerPromessa(jovemId: string) {
   if (error) throw error;
 }
 
+export async function criarJovem(nome: string, patrulha: string) {
+  const { error } = await supabase.from("jovens").insert({ nome, patrulha: patrulha || null });
+  if (error) throw error;
+}
+
+export async function atualizarJovem(id: string, nome: string, patrulha: string) {
+  const { error } = await supabase.from("jovens").update({ nome, patrulha: patrulha || null }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function removerJovem(id: string) {
+  const { error } = await supabase.from("jovens").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export const hoje = () => new Date().toISOString().slice(0, 10);
 
 export function formatarData(iso: string) {

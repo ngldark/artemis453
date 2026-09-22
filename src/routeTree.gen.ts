@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EixosRouteImport } from './routes/eixos'
+import { Route as JovensRouteImport } from './routes/jovens'
 import { Route as LoteRouteImport } from './routes/lote'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const EixosRoute = EixosRouteImport.update({
   path: '/eixos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JovensRoute = JovensRouteImport.update({
+  id: '/jovens',
+  path: '/jovens',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoteRoute = LoteRouteImport.update({
   id: '/lote',
   path: '/lote',
@@ -32,30 +38,34 @@ const LoteRoute = LoteRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/eixos': typeof EixosRoute
+  '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/eixos': typeof EixosRoute
+  '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/eixos': typeof EixosRoute
+  '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/eixos' | '/lote'
+  fullPaths: '/' | '/eixos' | '/jovens' | '/lote'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/eixos' | '/lote'
-  id: '__root__' | '/' | '/eixos' | '/lote'
+  to: '/' | '/eixos' | '/jovens' | '/lote'
+  id: '__root__' | '/' | '/eixos' | '/jovens' | '/lote'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EixosRoute: typeof EixosRoute
+  JovensRoute: typeof JovensRoute
   LoteRoute: typeof LoteRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EixosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jovens': {
+      id: '/jovens'
+      path: '/jovens'
+      fullPath: '/jovens'
+      preLoaderRoute: typeof JovensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lote': {
       id: '/lote'
       path: '/lote'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EixosRoute: EixosRoute,
+  JovensRoute: JovensRoute,
   LoteRoute: LoteRoute,
 }
 export const routeTree = rootRouteImport

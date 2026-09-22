@@ -1,15 +1,16 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, Users, LayoutList, ClipboardCheck } from "lucide-react";
+import { Compass, Users, LayoutList, ClipboardCheck, UserPlus } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const nav: { to: "/" | "/eixos" | "/lote"; label: string; icon: typeof Users; chefeOnly?: boolean }[] = [
+const nav: { to: "/" | "/eixos" | "/lote" | "/jovens"; label: string; icon: typeof Users; chefeOnly?: boolean }[] = [
   { to: "/", label: "Acolhida", icon: ClipboardCheck },
   { to: "/eixos", label: "Eixos", icon: LayoutList },
   { to: "/lote", label: "Em Lote", icon: Users, chefeOnly: true },
+  { to: "/jovens", label: "Jovens", icon: UserPlus, chefeOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
