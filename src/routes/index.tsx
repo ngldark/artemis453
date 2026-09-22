@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Circle, Award } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -12,6 +12,7 @@ import {
   marcarAcolhida,
   desmarcarAcolhida,
   liberarPromessa,
+  removerPromessa,
   formatarData,
   hoje,
 } from "@/lib/progressao";
@@ -50,6 +51,7 @@ function Acolhida() {
   const { perfil, jovemId, chefe, setChefe } = useAppState();
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
+  const [dataPromessa, setDataPromessa] = useState(hoje());
 
   const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
   const { data: progresso = [] } = useQuery({
