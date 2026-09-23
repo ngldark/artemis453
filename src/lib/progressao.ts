@@ -195,7 +195,14 @@ export type AcolhidaProgresso = {
   validado_por: string | null;
 };
 export type Eixo = { id: string; nome: string; cor: string; ordem: number };
-export type Bloco = { id: string; eixo_id: string; nome: string; descricao: string | null; ordem: number };
+export type Bloco = {
+  id: string;
+  eixo_id: string;
+  nome: string;
+  descricao: string | null;
+  ordem: number;
+  meta_variaveis: number;
+};
 export type Acao = {
   id: string;
   bloco_id: string;
@@ -351,23 +358,23 @@ export async function marcarAcao(input: {
   data: string;
   validadoPor: string;
 }) {
-  const { error } = await supabase.from("acoes_progresso").upsert(
+  const { error } = await supabase.from("progresso_acoes").upsert(
     {
-      jovem_id: input.jovemId,
+      escoteiro_id: input.jovemId,
       acao_id: input.acaoId,
-      data_realizacao: input.data,
+      data_conclusao: input.data,
       validado_por: input.validadoPor || null,
     },
-    { onConflict: "jovem_id,acao_id" },
+    { onConflict: "escoteiro_id,acao_id" },
   );
   if (error) throw error;
 }
 
 export async function desmarcarAcao(jovemId: string, acaoId: string) {
   const { error } = await supabase
-    .from("acoes_progresso")
+    .from("progresso_acoes")
     .delete()
-    .eq("jovem_id", jovemId)
+    .eq("escoteiro_id", jovemId)
     .eq("acao_id", acaoId);
   if (error) throw error;
 }
