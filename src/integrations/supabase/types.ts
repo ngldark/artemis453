@@ -53,6 +53,58 @@ export type Database = {
             referencedRelation: "blocos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "acoes_bloco_id_fkey"
+            columns: ["bloco_id"]
+            isOneToOne: false
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["bloco_id"]
+          },
+        ]
+      }
+      acoes_catalogo: {
+        Row: {
+          bloco_id: string
+          created_at: string
+          descricao: string
+          id: string
+          numero: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          bloco_id: string
+          created_at?: string
+          descricao: string
+          id: string
+          numero?: number
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          bloco_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          numero?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acoes_catalogo_bloco_id_fkey"
+            columns: ["bloco_id"]
+            isOneToOne: false
+            referencedRelation: "blocos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acoes_catalogo_bloco_id_fkey"
+            columns: ["bloco_id"]
+            isOneToOne: false
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["bloco_id"]
+          },
         ]
       }
       acoes_progresso: {
@@ -97,6 +149,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "jovens"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acoes_progresso_jovem_id_fkey"
+            columns: ["jovem_id"]
+            isOneToOne: false
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["escoteiro_id"]
           },
         ]
       }
@@ -170,6 +229,13 @@ export type Database = {
             referencedRelation: "jovens"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "acolhida_progresso_jovem_id_fkey"
+            columns: ["jovem_id"]
+            isOneToOne: false
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["escoteiro_id"]
+          },
         ]
       }
       blocos: {
@@ -178,6 +244,7 @@ export type Database = {
           descricao: string | null
           eixo_id: string
           id: string
+          meta_variaveis: number
           nome: string
           ordem: number
           updated_at: string
@@ -187,6 +254,7 @@ export type Database = {
           descricao?: string | null
           eixo_id: string
           id?: string
+          meta_variaveis?: number
           nome: string
           ordem?: number
           updated_at?: string
@@ -196,6 +264,7 @@ export type Database = {
           descricao?: string | null
           eixo_id?: string
           id?: string
+          meta_variaveis?: number
           nome?: string
           ordem?: number
           updated_at?: string
@@ -261,6 +330,58 @@ export type Database = {
         }
         Relationships: []
       }
+      progresso_acoes: {
+        Row: {
+          acao_id: string
+          created_at: string
+          data_conclusao: string
+          escoteiro_id: string
+          id: string
+          updated_at: string
+          validado_por: string | null
+        }
+        Insert: {
+          acao_id: string
+          created_at?: string
+          data_conclusao?: string
+          escoteiro_id: string
+          id?: string
+          updated_at?: string
+          validado_por?: string | null
+        }
+        Update: {
+          acao_id?: string
+          created_at?: string
+          data_conclusao?: string
+          escoteiro_id?: string
+          id?: string
+          updated_at?: string
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_acoes_acao_id_fkey"
+            columns: ["acao_id"]
+            isOneToOne: false
+            referencedRelation: "acoes_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progresso_acoes_escoteiro_id_fkey"
+            columns: ["escoteiro_id"]
+            isOneToOne: false
+            referencedRelation: "jovens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progresso_acoes_escoteiro_id_fkey"
+            columns: ["escoteiro_id"]
+            isOneToOne: false
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["escoteiro_id"]
+          },
+        ]
+      }
       promessas: {
         Row: {
           created_at: string
@@ -294,11 +415,31 @@ export type Database = {
             referencedRelation: "jovens"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "promessas_jovem_id_fkey"
+            columns: ["jovem_id"]
+            isOneToOne: true
+            referencedRelation: "vw_status_blocos"
+            referencedColumns: ["escoteiro_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      vw_status_blocos: {
+        Row: {
+          acao_ou_concluida: boolean | null
+          atalho_conquistado: boolean | null
+          bloco_concluido: boolean | null
+          bloco_id: string | null
+          bloco_nome: string | null
+          escoteiro_id: string | null
+          meta_variaveis: number | null
+          todas_fixas_concluidas: boolean | null
+          variaveis_concluidas: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

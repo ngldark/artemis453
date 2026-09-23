@@ -9,7 +9,7 @@ import {
   fetchAcolhidaCatalogo,
   fetchEixos,
   fetchBlocos,
-  fetchAcoes,
+  fetchAcoesCatalogo,
   marcarAcolhida,
   marcarAcao,
   hoje,
@@ -56,7 +56,7 @@ function Lote() {
   const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
-  const { data: acoes = [] } = useQuery({ queryKey: ["acoes"], queryFn: fetchAcoes });
+  const { data: acoes = [] } = useQuery({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
 
   const grupos = useMemo(
     () =>
@@ -131,7 +131,7 @@ function Lote() {
                     </SelectLabel>
                     {b.acoes.map((a) => (
                       <SelectItem key={a.id} value={`acao:${a.id}`}>
-                        {a.titulo}
+                        {a.tipo} {a.numero} · {a.descricao}
                       </SelectItem>
                     ))}
                   </SelectGroup>
