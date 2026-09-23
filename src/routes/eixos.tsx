@@ -9,21 +9,25 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   fetchEixos,
   fetchBlocos,
-  fetchAcoes,
+  fetchAcoesCatalogo,
   fetchAcoesProgresso,
+  fetchStatusBlocos,
   fetchPromessas,
   marcarAcao,
   desmarcarAcao,
   formatarData,
   hoje,
-  type Acao,
+  type AcaoCatalogo,
   type Bloco,
+  type StatusBloco,
+  type TipoAcao,
 } from "@/lib/progressao";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -33,12 +37,12 @@ export const Route = createFileRoute("/eixos")({
       { title: "Eixos e Blocos — Progressão Escoteira" },
       {
         name: "description",
-        content: "Explore os 4 eixos educativos, seus blocos e ações fixas, variáveis e de substituição.",
+        content: "Explore os eixos educativos, seus blocos e as ações fixas, variáveis e de substituição (OU).",
       },
       { property: "og:title", content: "Eixos e Blocos — Progressão Escoteira" },
       {
         property: "og:description",
-        content: "Explore os 4 eixos educativos, seus blocos e ações fixas, variáveis e de substituição.",
+        content: "Explore os eixos educativos, seus blocos e as ações fixas, variáveis e de substituição (OU).",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -57,23 +61,26 @@ function Eixos() {
 
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
-  const { data: acoes = [] } = useQuery({ queryKey: ["acoes"], queryFn: fetchAcoes });
-  const { data: progresso = [] } = useQuery({
-    queryKey: ["acoes_progresso", jovemId],
-    queryFn: () => fetchAcoesProgresso(jovemId!),
+  const { data: status = [] } = useQuery({
+    queryKey: ["status_blocos", jovemId],
+    queryFn: () => fetchStatusBlocos(jovemId!),
     enabled: !!jovemId,
   });
 
   const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
   const promessa = promessas.find((p) => p.jovem_id === jovemId);
 
-  const feitas = useMemo(() => new Set(progresso.map((p) => p.acao_id)), [progresso]);
+  const statusPorBloco = useMemo(() => {
+    const m = new Map<string, StatusBloco>();
+    status.forEach((s) => m.set(s.bloco_id, s));
+    return m;
+  }, [status]);
 
-  const statusBloco = (bloco: Bloco) => {
-    const doBloco = acoes.filter((a) => a.bloco_id === bloco.id && a.tipo !== "substituicao");
-    const done = doBloco.filter((a) => feitas.has(a.id)).length;
-    if (doBloco.length > 0 && done === doBloco.length) return { label: "Concluído", cls: "bg-leaf text-leaf-foreground" };
-    if (done > 0) return { label: "Em Andamento", cls: "bg-gold text-gold-foreground" };
+  const badgeBloco = (s?: StatusBloco) => {
+    if (!s) return { label: "Não Iniciado", cls: "bg-muted text-muted-foreground" };
+    if (s.bloco_concluido) return { label: "Concluído", cls: "bg-leaf text-leaf-foreground" };
+    if (s.variaveis_concluidas > 0 || s.todas_fixas_concluidas)
+      return { label: "Em Andamento", cls: "bg-gold text-gold-foreground" };
     return { label: "Não Iniciado", cls: "bg-muted text-muted-foreground" };
   };
 
@@ -116,7 +123,11 @@ function Eixos() {
               {blocos
                 .filter((b) => b.eixo_id === e.id)
                 .map((b) => {
-                  const st = statusBloco(b);
+                  const s = statusPorBloco.get(b.id);
+                  const st = badgeBloco(s);
+                  const meta = s?.meta_variaveis ?? b.meta_variaveis;
+                  const feitas = s?.variaveis_concluidas ?? 0;
+                  const pct = meta > 0 ? Math.min(100, Math.round((feitas / meta) * 100)) : 0;
                   return (
                     <Card
                       key={b.id}
@@ -129,6 +140,16 @@ function Eixos() {
                         <Badge className={`shrink-0 ${st.cls}`}>{st.label}</Badge>
                       </div>
                       {b.descricao && <p className="text-sm text-muted-foreground">{b.descricao}</p>}
+                      {s?.atalho_conquistado ? (
+                        <p className="text-xs font-medium text-leaf">Atalho "OU" conquistado</p>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Fixas: {s?.todas_fixas_concluidas ? "completas" : "pendentes"} · Variáveis: {feitas}/{meta}
+                          </p>
+                          {meta > 0 && <Progress value={pct} className="h-1.5" />}
+                        </>
+                      )}
                     </Card>
                   );
                 })}
@@ -137,18 +158,18 @@ function Eixos() {
         </Tabs>
       )}
 
-      <BlocoDialog bloco={blocoAberto} acoes={acoes} onClose={() => setBlocoAberto(null)} />
+      <BlocoDialog bloco={blocoAberto} status={blocoAberto ? statusPorBloco.get(blocoAberto.id) : undefined} onClose={() => setBlocoAberto(null)} />
     </div>
   );
 }
 
 function BlocoDialog({
   bloco,
-  acoes,
+  status,
   onClose,
 }: {
   bloco: Bloco | null;
-  acoes: Acao[];
+  status?: StatusBloco;
   onClose: () => void;
 }) {
   const { perfil, jovemId } = useAppState();
@@ -156,7 +177,7 @@ function BlocoDialog({
   const [data, setData] = useState(hoje());
   const [nomeChefe, setNomeChefe] = useState("Chefia");
 
-  // Identificar automaticamente a chefia logada pelo Supabase Auth
+  // Identificar automaticamente a chefia logada
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
@@ -172,6 +193,12 @@ function BlocoDialog({
     });
   }, []);
 
+  const { data: acoes = [] } = useQuery({
+    queryKey: ["acoes_catalogo", bloco?.id],
+    queryFn: () => fetchAcoesCatalogo(bloco!.id),
+    enabled: !!bloco,
+  });
+
   const { data: progresso = [] } = useQuery({
     queryKey: ["acoes_progresso", jovemId],
     queryFn: () => fetchAcoesProgresso(jovemId!),
@@ -184,15 +211,19 @@ function BlocoDialog({
       if (feito) await desmarcarAcao(jovemId, acaoId);
       else await marcarAcao({ jovemId, acaoId, data, validadoPor: nomeChefe });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["acoes_progresso"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["acoes_progresso"] });
+      qc.invalidateQueries({ queryKey: ["status_blocos"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   if (!bloco) return null;
-  const doBloco = acoes.filter((a) => a.bloco_id === bloco.id);
 
-  const lista = (tipo: Acao["tipo"]) => {
-    const itens = doBloco.filter((a) => a.tipo === tipo);
+  const meta = status?.meta_variaveis ?? bloco.meta_variaveis;
+
+  const lista = (tipo: TipoAcao) => {
+    const itens = acoes.filter((a: AcaoCatalogo) => a.tipo === tipo);
     if (itens.length === 0) return <p className="text-sm text-muted-foreground">Nenhuma ação nesta categoria.</p>;
     return (
       <ul className="space-y-3">
@@ -208,8 +239,9 @@ function BlocoDialog({
                   <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 space-y-1">
-                  <p className="text-sm font-semibold leading-snug">{a.titulo}</p>
-                  {a.descricao && <p className="text-xs text-muted-foreground">{a.descricao}</p>}
+                  <p className="text-sm font-semibold leading-snug">
+                    {a.numero}. {a.descricao}
+                  </p>
                   {feito && (
                     <p className="text-xs text-muted-foreground">
                       Concluído em {formatarData(reg!.data_realizacao)}
@@ -243,6 +275,23 @@ function BlocoDialog({
           <DialogTitle className="text-left">{bloco.nome}</DialogTitle>
         </DialogHeader>
 
+        {status && (
+          <div className="rounded-xl border border-border p-3 text-sm">
+            <p>
+              Fixas: <strong>{status.todas_fixas_concluidas ? "todas concluídas" : "pendentes"}</strong>
+            </p>
+            <p>
+              Variáveis: <strong>{status.variaveis_concluidas}/{meta}</strong>
+            </p>
+            <p>
+              Atalho "OU": <strong>{status.atalho_conquistado ? "conquistado" : "não conquistado"}</strong>
+            </p>
+            <p className={status.bloco_concluido ? "font-semibold text-leaf" : "text-muted-foreground"}>
+              {status.bloco_concluido ? "Bloco concluído" : "Bloco em andamento"}
+            </p>
+          </div>
+        )}
+
         {perfil === "chefe" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -258,24 +307,24 @@ function BlocoDialog({
           </div>
         )}
 
-        <Tabs defaultValue="fixa">
+        <Tabs defaultValue="FIXA">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="fixa" className="text-xs">Fixas</TabsTrigger>
-            <TabsTrigger value="variavel" className="text-xs">Variáveis</TabsTrigger>
-            <TabsTrigger value="substituicao" className="text-xs">Regra "OU"</TabsTrigger>
+            <TabsTrigger value="FIXA" className="text-xs">Fixas</TabsTrigger>
+            <TabsTrigger value="VARIAVEL" className="text-xs">Variáveis</TabsTrigger>
+            <TabsTrigger value="OU" className="text-xs">Regra "OU"</TabsTrigger>
           </TabsList>
-          <TabsContent value="fixa" className="mt-4">{lista("fixa")}</TabsContent>
-          <TabsContent value="variavel" className="mt-4">
+          <TabsContent value="FIXA" className="mt-4">{lista("FIXA")}</TabsContent>
+          <TabsContent value="VARIAVEL" className="mt-4">
             <p className="mb-3 text-xs text-muted-foreground">
-              Ações variáveis e especialidades que somam ao bloco.
+              Meta deste bloco: {meta} ação(ões) variável(is).
             </p>
-            {lista("variavel")}
+            {lista("VARIAVEL")}
           </TabsContent>
-          <TabsContent value="substituicao" className="mt-4">
+          <TabsContent value="OU" className="mt-4">
             <p className="mb-3 text-xs text-muted-foreground">
-              Insígnias ou Especialidades de Nível 2 podem substituir as ações fixas deste bloco.
+              Concluir uma destas substitui as exigências fixas e variáveis do bloco.
             </p>
-            {lista("substituicao")}
+            {lista("OU")}
           </TabsContent>
         </Tabs>
       </DialogContent>
