@@ -213,6 +213,33 @@ export type AcaoProgresso = {
 };
 export type Promessa = { id: string; jovem_id: string; liberada_em: string; liberada_por: string | null };
 
+export type TipoAcao = "FIXA" | "VARIAVEL" | "OU";
+export type AcaoCatalogo = {
+  id: string;
+  bloco_id: string;
+  tipo: TipoAcao;
+  numero: number;
+  descricao: string;
+};
+export type ProgressoAcaoRow = {
+  id: string;
+  escoteiro_id: string;
+  acao_id: string;
+  data_conclusao: string;
+  validado_por: string | null;
+};
+export type StatusBloco = {
+  escoteiro_id: string;
+  bloco_id: string;
+  bloco_nome: string;
+  todas_fixas_concluidas: boolean;
+  variaveis_concluidas: number;
+  meta_variaveis: number;
+  acao_ou_concluida: boolean;
+  atalho_conquistado: boolean;
+  bloco_concluido: boolean;
+};
+
 const rows = <T,>(data: unknown): T[] => (data ?? []) as T[];
 
 export async function fetchJovens() {
@@ -253,12 +280,34 @@ export async function fetchAcoes() {
   return rows<Acao>(data);
 }
 
-export async function fetchAcoesProgresso(jovemId?: string) {
-  let q = supabase.from("acoes_progresso").select("*");
-  if (jovemId) q = q.eq("jovem_id", jovemId);
+export async function fetchAcoesCatalogo(blocoId?: string) {
+  let q = supabase.from("acoes_catalogo").select("*").order("numero");
+  if (blocoId) q = q.eq("bloco_id", blocoId);
   const { data, error } = await q;
   if (error) throw error;
-  return rows<AcaoProgresso>(data);
+  return rows<AcaoCatalogo>(data);
+}
+
+export async function fetchStatusBlocos(jovemId?: string) {
+  let q = supabase.from("vw_status_blocos").select("*");
+  if (jovemId) q = q.eq("escoteiro_id", jovemId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return rows<StatusBloco>(data);
+}
+
+export async function fetchAcoesProgresso(jovemId?: string) {
+  let q = supabase.from("progresso_acoes").select("*");
+  if (jovemId) q = q.eq("escoteiro_id", jovemId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return rows<ProgressoAcaoRow>(data).map((r) => ({
+    id: r.id,
+    jovem_id: r.escoteiro_id,
+    acao_id: r.acao_id,
+    data_realizacao: r.data_conclusao,
+    validado_por: r.validado_por,
+  }));
 }
 
 export async function fetchPromessas() {
