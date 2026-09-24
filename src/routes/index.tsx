@@ -60,11 +60,11 @@ function Acolhida() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         // Pega o nome do metadado do usuário ou usa a parte antes do @ no e-mail
-        const nomeMeta = user.user_metadata?.full_name || user.user_metadata?.name;
+        const nomeMeta = user.user_metadata?.["full_name"] || user.user_metadata?.["name"];
         if (nomeMeta) {
-          setNomeChefe(nomeMeta);
+          setNomeChefe(String(nomeMeta));
         } else if (user.email) {
-          const usuarioEmail = user.email.split("@")[0];
+          const usuarioEmail = user.email.split("@")[0] ?? "";
           const formatado = usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1);
           setNomeChefe(formatado);
         }

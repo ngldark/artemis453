@@ -414,7 +414,7 @@ export async function atualizarJovem(
   patrulha: string,
   registroUeb?: string,
 ) {
-  const payload: Record<string, any> = {
+  const payload: { nome: string; patrulha: string | null; registro_ueb?: string | null } = {
     nome,
     patrulha: patrulha || null,
   };
