@@ -169,7 +169,7 @@ function BlocoDialog({
   onClose,
 }: {
   bloco: Bloco | null;
-  status?: StatusBloco;
+  status?: StatusBloco | undefined;
   onClose: () => void;
 }) {
   const { perfil, jovemId } = useAppState();
@@ -181,11 +181,11 @@ function BlocoDialog({
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        const nomeMeta = user.user_metadata?.full_name || user.user_metadata?.name;
+        const nomeMeta = user.user_metadata?.["full_name"] || user.user_metadata?.["name"];
         if (nomeMeta) {
-          setNomeChefe(nomeMeta);
+          setNomeChefe(String(nomeMeta));
         } else if (user.email) {
-          const usuarioEmail = user.email.split("@")[0];
+          const usuarioEmail = user.email.split("@")[0] ?? "";
           const formatado = usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1);
           setNomeChefe(formatado);
         }
