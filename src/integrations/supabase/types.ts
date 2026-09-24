@@ -309,23 +309,32 @@ export type Database = {
       jovens: {
         Row: {
           created_at: string
+          email: string | null
           id: string
           nome: string
           patrulha: string | null
+          perfil: string
+          registro_ueb: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           id?: string
           nome: string
           patrulha?: string | null
+          perfil?: string
+          registro_ueb?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           id?: string
           nome?: string
           patrulha?: string | null
+          perfil?: string
+          registro_ueb?: string | null
           updated_at?: string
         }
         Relationships: []

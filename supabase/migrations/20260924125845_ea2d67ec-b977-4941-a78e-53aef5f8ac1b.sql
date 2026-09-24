@@ -1,0 +1,4 @@
+ALTER TABLE public.jovens
+  ADD COLUMN IF NOT EXISTS registro_ueb text,
+  ADD COLUMN IF NOT EXISTS email text,
+  ADD COLUMN IF NOT EXISTS perfil text NOT NULL DEFAULT 'ESCOTEIRO';
