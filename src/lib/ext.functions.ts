@@ -47,3 +47,35 @@ export const extDb = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return JSON.stringify(rows ?? []);
   });
+
+// Identifica o membro da tropa a partir do e-mail autenticado (lista branca).
+export const meuMembro = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const email = String((context.claims as Record<string, unknown>)["email"] ?? "")
+      .trim()
+      .toLowerCase();
+    if (!email) return JSON.stringify(null);
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const url = process.env["EXT_SUPABASE_URL"];
+    const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"];
+    if (!url || !key) throw new Error("Banco oficial não configurado");
+    const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+    const { data, error } = await db
+      .from("escoteiros")
+      .select("id, nome_completo, patrulha, perfil, email")
+      .ilike("email", email)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const row = data?.[0];
+    if (!row) return JSON.stringify(null);
+    return JSON.stringify({
+      id: row["id"],
+      nome: row["nome_completo"],
+      patrulha: row["patrulha"] ?? null,
+      perfil: String(row["perfil"] ?? "ESCOTEIRO").toUpperCase(),
+      email: row["email"] ?? email,
+    });
+  });
