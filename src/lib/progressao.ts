@@ -263,7 +263,7 @@ export async function criarJovem(dados: {
 
 export async function atualizarJovem(id: string, nome: string, patrulha: string, registroUeb?: string) {
   const valores: Record<string, unknown> = { nome_completo: nome, patrulha: patrulha || null };
-  if (registroUeb !== undefined) valores.registro_ueb = registroUeb || null;
+  if (registroUeb !== undefined) valores["registro_ueb"] = registroUeb || null;
   await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, valores } });
 }
 
