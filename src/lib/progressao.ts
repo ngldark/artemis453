@@ -1,4 +1,4 @@
-import { extDb } from "./ext.functions";
+import { extDb, TABELAS } from "./ext.functions";
 
 // Todos os dados vêm do banco oficial da tropa (projeto externo),
 // acessado por funções no servidor.
@@ -60,11 +60,11 @@ export type StatusBloco = {
   bloco_concluido: boolean;
 };
 
-type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-type Tabela = Parameters<typeof extDb>[0]["data"]["tabela"];
+type Row = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+type Tabela = (typeof TABELAS)[number];
 
 const sel = (tabela: Tabela, filtros?: Record<string, string | number>) =>
-  extDb({ data: { op: "select", tabela, filtros } }) as Promise<Row[]>;
+  extDb({ data: { op: "select", tabela, filtros } }).then((t) => JSON.parse(t) as Row[]);
 
 const CORES = ["azul", "verde", "dourado", "azul"];
 
@@ -122,7 +122,7 @@ export async function fetchEixos(): Promise<Eixo[]> {
       if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       return String(a.nome).localeCompare(String(b.nome), "pt-BR");
     })
-    .map((r, i) => ({ id: r.id, nome: r.nome, cor: CORES[i % CORES.length], ordem: i + 1 }));
+    .map((r, i) => ({ id: r.id, nome: r.nome, cor: CORES[i % CORES.length] ?? "azul", ordem: i + 1 }));
 }
 
 export async function fetchBlocos(): Promise<Bloco[]> {
@@ -263,7 +263,7 @@ export async function criarJovem(dados: {
 
 export async function atualizarJovem(id: string, nome: string, patrulha: string, registroUeb?: string) {
   const valores: Record<string, unknown> = { nome_completo: nome, patrulha: patrulha || null };
-  if (registroUeb !== undefined) valores.registro_ueb = registroUeb || null;
+  if (registroUeb !== undefined) valores["registro_ueb"] = registroUeb || null;
   await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, valores } });
 }
 

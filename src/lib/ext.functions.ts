@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // Operações permitidas no banco oficial da tropa (projeto externo).
-const TABELAS = [
+export const TABELAS = [
   "escoteiros",
   "eixos",
   "blocos",
@@ -45,5 +45,5 @@ export const extDb = createServerFn({ method: "POST" })
     for (const [k, v] of filtros) q = q.eq(k, v);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return JSON.parse(JSON.stringify(rows ?? [])) as Record<string, unknown>[];
+    return JSON.stringify(rows ?? []);
   });
