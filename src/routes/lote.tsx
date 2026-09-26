@@ -57,6 +57,14 @@ function Lote() {
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
   const { data: acoes = [] } = useQuery({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
+  const { data: progAcolhida = [] } = useQuery({
+    queryKey: ["acolhida_progresso"],
+    queryFn: () => fetchAcolhidaProgresso(),
+  });
+  const { data: progAcoes = [] } = useQuery({
+    queryKey: ["acoes_progresso"],
+    queryFn: () => fetchAcoesProgresso(),
+  });
 
   const grupos = useMemo(
     () =>
@@ -68,6 +76,18 @@ function Lote() {
       })),
     [eixos, blocos, acoes],
   );
+
+  const pendentes = useMemo(() => {
+    if (!alvo) return jovens;
+    const [tipo, id] = alvo.split(":") as [string, string];
+    const feitos = new Set(
+      tipo === "acolhida"
+        ? progAcolhida.filter((p) => p.item_id === id).map((p) => p.jovem_id)
+        : progAcoes.filter((p) => p.acao_id === id).map((p) => p.jovem_id),
+    );
+    return jovens.filter((j) => !feitos.has(j.id));
+  }, [alvo, jovens, progAcolhida, progAcoes]);
+
 
   const lancar = useMutation({
     mutationFn: async () => {
