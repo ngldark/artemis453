@@ -10,6 +10,9 @@ import {
   fetchEixos,
   fetchBlocos,
   fetchAcoesCatalogo,
+  fetchAcolhidaProgresso,
+  fetchAcoesProgresso,
+
   marcarAcolhida,
   marcarAcao,
   hoje,
