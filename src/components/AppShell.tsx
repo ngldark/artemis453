@@ -85,21 +85,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="mt-3">
-            <Select value={jovemId ?? ""} onValueChange={(v) => setJovemId(v)}>
-              <SelectTrigger className="h-10 w-full border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
-                <SelectValue placeholder="Selecione o jovem" />
-              </SelectTrigger>
-              <SelectContent>
-                {jovens.map((j) => (
-                  <SelectItem key={j.id} value={j.id}>
-                    {j.nome}
-                    {j.patrulha ? ` · ${j.patrulha}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {ehChefe ? (
+            <div className="mt-3">
+              <Select value={jovemId ?? ""} onValueChange={(v) => setJovemId(v)}>
+                <SelectTrigger className="h-10 w-full border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
+                  <SelectValue placeholder="Selecione o jovem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jovens.map((j) => (
+                    <SelectItem key={j.id} value={j.id}>
+                      {j.nome}
+                      {j.patrulha ? ` · ${j.patrulha}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="mt-3 truncate text-xs text-primary-foreground/80">
+              {membro?.patrulha ? `Patrulha ${membro.patrulha}` : "Minha progressão"}
+            </p>
+          )}
         </div>
       </header>
 
@@ -108,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card">
         <div className="mx-auto flex max-w-4xl">
           {nav
-            .filter((n) => !n.chefeOnly || perfil === "chefe")
+            .filter((n) => !n.chefeOnly || (ehChefe && perfil === "chefe"))
             .map((n) => {
               const active = pathname === n.to;
               const Icon = n.icon;
