@@ -1,4 +1,10 @@
-import { extDb, TABELAS } from "./ext.functions";
+import { extDb, meuMembro, TABELAS } from "./ext.functions";
+import type { Membro } from "./membro";
+
+export async function fetchMeuMembro(): Promise<Membro | null> {
+  const txt = await meuMembro();
+  return JSON.parse(txt) as Membro | null;
+}
 
 // Todos os dados vêm do banco oficial da tropa (projeto externo),
 // acessado por funções no servidor.
@@ -75,6 +81,7 @@ type EscoteiroRow = {
   registro_ueb: string | null;
   perfil: string | null;
   data_promessa: string | null;
+  email: string | null;
 };
 
 async function fetchEscoteiros() {
