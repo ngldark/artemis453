@@ -121,7 +121,9 @@ function Lote() {
     );
   }
 
-  const todos = selecionados.length === jovens.length && jovens.length > 0;
+  const todos = selecionados.length === pendentes.length && pendentes.length > 0;
+  const jaConcluiram = jovens.length - pendentes.length;
+
 
   return (
     <div className="space-y-4">
