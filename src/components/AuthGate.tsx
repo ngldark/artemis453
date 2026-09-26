@@ -128,8 +128,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   async function salvarNovaSenha(e: React.FormEvent) {
     e.preventDefault();
-    if (senha.length < 6) return toast.error("A senha precisa ter pelo menos 6 caracteres.");
-    if (senha !== senha2) return toast.error("As senhas não conferem.");
+    if (senha.length < 6) {
+      toast.error("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (senha !== senha2) {
+      toast.error("As senhas não conferem.");
+      return;
+    }
     setEnviando(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: senha });

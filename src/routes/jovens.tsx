@@ -490,7 +490,7 @@ function JovensPage() {
   const salvar = useMutation({
     mutationFn: async () => {
       if (editando) {
-        await atualizarJovem(editando.id, nome.trim(), patrulha, registroUeb.trim());
+        await atualizarJovem(editando.id, nome.trim(), patrulha, registroUeb.trim(), email.trim());
       } else {
         await criarJovem({
           nome: nome.trim(),
@@ -581,6 +581,9 @@ function JovensPage() {
                   <p className="truncate text-xs text-muted-foreground">
                     Patrulha: {j.patrulha ?? "Não informada"} {j.registro_ueb ? `• UEB: ${j.registro_ueb}` : ""}
                   </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {j.email ? j.email : "Sem e-mail de acesso"}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
@@ -592,7 +595,7 @@ function JovensPage() {
                       setNome(j.nome);
                       setPatrulha(j.patrulha ?? "");
                       setRegistroUeb(j.registro_ueb ?? "");
-                      setEmail("");
+                      setEmail(j.email ?? "");
                       setDialogOpen(true);
                     }}
                   >

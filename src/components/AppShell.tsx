@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
+import { useMembro } from "@/lib/membro";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const nav: { to: "/" | "/eixos" | "/lote" | "/jovens"; label: string; icon: typeof Users; chefeOnly?: boolean }[] = [
@@ -17,6 +18,8 @@ const nav: { to: "/" | "/eixos" | "/lote" | "/jovens"; label: string; icon: type
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+  const membro = useMembro();
+  const ehChefe = membro?.perfil === "CHEFE";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
   const queryClient = useQueryClient();
@@ -28,8 +31,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    if (!ehChefe && membro) {
+      if (jovemId !== membro.id) setJovemId(membro.id);
+      if (perfil !== "escoteiro") setPerfil("escoteiro");
+      return;
+    }
     if (!jovemId && jovens[0]) setJovemId(jovens[0].id);
-  }, [jovens, jovemId, setJovemId]);
+  }, [jovens, jovemId, setJovemId, ehChefe, membro, perfil, setPerfil]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -45,19 +53,27 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <p className="truncate text-xs text-primary-foreground/70">Ramo Escoteiro</p>
               </div>
             </div>
-            <div className="flex shrink-0 rounded-full bg-primary-foreground/15 p-1 text-xs font-semibold">
-              <button
-                onClick={() => setPerfil("escoteiro")}
-                className={`rounded-full px-3 py-1.5 transition ${perfil === "escoteiro" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
-              >
-                Escoteiro
-              </button>
-              <button
-                onClick={() => setPerfil("chefe")}
-                className={`rounded-full px-3 py-1.5 transition ${perfil === "chefe" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
-              >
-                Chefe
-              </button>
+            <div className="flex shrink-0 items-center rounded-full bg-primary-foreground/15 p-1 text-xs font-semibold">
+              {ehChefe ? (
+                <>
+                  <button
+                    onClick={() => setPerfil("escoteiro")}
+                    className={`rounded-full px-3 py-1.5 transition ${perfil === "escoteiro" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
+                  >
+                    Escoteiro
+                  </button>
+                  <button
+                    onClick={() => setPerfil("chefe")}
+                    className={`rounded-full px-3 py-1.5 transition ${perfil === "chefe" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
+                  >
+                    Chefe
+                  </button>
+                </>
+              ) : (
+                <span className="max-w-[9rem] truncate rounded-full px-3 py-1.5 text-primary-foreground/90">
+                  {membro?.nome ?? "Escoteiro"}
+                </span>
+              )}
               <button
                 onClick={sair}
                 aria-label="Sair"
@@ -69,21 +85,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="mt-3">
-            <Select value={jovemId ?? ""} onValueChange={(v) => setJovemId(v)}>
-              <SelectTrigger className="h-10 w-full border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
-                <SelectValue placeholder="Selecione o jovem" />
-              </SelectTrigger>
-              <SelectContent>
-                {jovens.map((j) => (
-                  <SelectItem key={j.id} value={j.id}>
-                    {j.nome}
-                    {j.patrulha ? ` · ${j.patrulha}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {ehChefe ? (
+            <div className="mt-3">
+              <Select value={jovemId ?? ""} onValueChange={(v) => setJovemId(v)}>
+                <SelectTrigger className="h-10 w-full border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
+                  <SelectValue placeholder="Selecione o jovem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jovens.map((j) => (
+                    <SelectItem key={j.id} value={j.id}>
+                      {j.nome}
+                      {j.patrulha ? ` · ${j.patrulha}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="mt-3 truncate text-xs text-primary-foreground/80">
+              {membro?.patrulha ? `Patrulha ${membro.patrulha}` : "Minha progressão"}
+            </p>
+          )}
         </div>
       </header>
 
@@ -92,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card">
         <div className="mx-auto flex max-w-4xl">
           {nav
-            .filter((n) => !n.chefeOnly || perfil === "chefe")
+            .filter((n) => !n.chefeOnly || (ehChefe && perfil === "chefe"))
             .map((n) => {
               const active = pathname === n.to;
               const Icon = n.icon;
