@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppState } from "@/lib/app-state";
 import { fetchJovens } from "@/lib/progressao";
+import { useMembro } from "@/lib/membro";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const nav: { to: "/" | "/eixos" | "/lote" | "/jovens"; label: string; icon: typeof Users; chefeOnly?: boolean }[] = [
@@ -17,6 +18,8 @@ const nav: { to: "/" | "/eixos" | "/lote" | "/jovens"; label: string; icon: type
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+  const membro = useMembro();
+  const ehChefe = membro?.perfil === "CHEFE";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
   const queryClient = useQueryClient();
