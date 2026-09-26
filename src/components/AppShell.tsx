@@ -31,8 +31,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    if (!ehChefe && membro) {
+      if (jovemId !== membro.id) setJovemId(membro.id);
+      if (perfil !== "escoteiro") setPerfil("escoteiro");
+      return;
+    }
     if (!jovemId && jovens[0]) setJovemId(jovens[0].id);
-  }, [jovens, jovemId, setJovemId]);
+  }, [jovens, jovemId, setJovemId, ehChefe, membro, perfil, setPerfil]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -48,19 +53,27 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <p className="truncate text-xs text-primary-foreground/70">Ramo Escoteiro</p>
               </div>
             </div>
-            <div className="flex shrink-0 rounded-full bg-primary-foreground/15 p-1 text-xs font-semibold">
-              <button
-                onClick={() => setPerfil("escoteiro")}
-                className={`rounded-full px-3 py-1.5 transition ${perfil === "escoteiro" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
-              >
-                Escoteiro
-              </button>
-              <button
-                onClick={() => setPerfil("chefe")}
-                className={`rounded-full px-3 py-1.5 transition ${perfil === "chefe" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
-              >
-                Chefe
-              </button>
+            <div className="flex shrink-0 items-center rounded-full bg-primary-foreground/15 p-1 text-xs font-semibold">
+              {ehChefe ? (
+                <>
+                  <button
+                    onClick={() => setPerfil("escoteiro")}
+                    className={`rounded-full px-3 py-1.5 transition ${perfil === "escoteiro" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
+                  >
+                    Escoteiro
+                  </button>
+                  <button
+                    onClick={() => setPerfil("chefe")}
+                    className={`rounded-full px-3 py-1.5 transition ${perfil === "chefe" ? "bg-gold text-gold-foreground" : "text-primary-foreground/80"}`}
+                  >
+                    Chefe
+                  </button>
+                </>
+              ) : (
+                <span className="max-w-[9rem] truncate rounded-full px-3 py-1.5 text-primary-foreground/90">
+                  {membro?.nome ?? "Escoteiro"}
+                </span>
+              )}
               <button
                 onClick={sair}
                 aria-label="Sair"
