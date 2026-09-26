@@ -10,6 +10,9 @@ import {
   fetchEixos,
   fetchBlocos,
   fetchAcoesCatalogo,
+  fetchAcolhidaProgresso,
+  fetchAcoesProgresso,
+
   marcarAcolhida,
   marcarAcao,
   hoje,
@@ -57,6 +60,14 @@ function Lote() {
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
   const { data: acoes = [] } = useQuery({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
+  const { data: progAcolhida = [] } = useQuery({
+    queryKey: ["acolhida_progresso"],
+    queryFn: () => fetchAcolhidaProgresso(),
+  });
+  const { data: progAcoes = [] } = useQuery({
+    queryKey: ["acoes_progresso"],
+    queryFn: () => fetchAcoesProgresso(),
+  });
 
   const grupos = useMemo(
     () =>
@@ -68,6 +79,18 @@ function Lote() {
       })),
     [eixos, blocos, acoes],
   );
+
+  const pendentes = useMemo(() => {
+    if (!alvo) return jovens;
+    const [tipo, id] = alvo.split(":") as [string, string];
+    const feitos = new Set(
+      tipo === "acolhida"
+        ? progAcolhida.filter((p) => p.item_id === id).map((p) => p.jovem_id)
+        : progAcoes.filter((p) => p.acao_id === id).map((p) => p.jovem_id),
+    );
+    return jovens.filter((j) => !feitos.has(j.id));
+  }, [alvo, jovens, progAcolhida, progAcoes]);
+
 
   const lancar = useMutation({
     mutationFn: async () => {
@@ -98,7 +121,9 @@ function Lote() {
     );
   }
 
-  const todos = selecionados.length === jovens.length && jovens.length > 0;
+  const todos = selecionados.length === pendentes.length && pendentes.length > 0;
+  const jaConcluiram = jovens.length - pendentes.length;
+
 
   return (
     <div className="space-y-4">
@@ -110,7 +135,13 @@ function Lote() {
       <Card className="gap-4 p-4">
         <div className="space-y-1.5">
           <Label>Item de Acolhida ou Ação</Label>
-          <Select value={alvo} onValueChange={setAlvo}>
+          <Select
+            value={alvo}
+            onValueChange={(v) => {
+              setAlvo(v);
+              setSelecionados([]);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o item" />
             </SelectTrigger>
@@ -160,38 +191,53 @@ function Lote() {
 
       <Card className="gap-3 p-4">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <p className="truncate font-semibold">Jovens ({selecionados.length} selecionados)</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold">
+              {alvo ? "Jovens pendentes" : "Jovens"} ({selecionados.length} selecionados)
+            </p>
+            {alvo && jaConcluiram > 0 && (
+              <p className="text-xs text-muted-foreground">{jaConcluiram} já concluíram esta etapa.</p>
+            )}
+          </div>
           <Button
             variant="outline"
             size="sm"
             className="shrink-0"
-            onClick={() => setSelecionados(todos ? [] : jovens.map((j) => j.id))}
+            disabled={pendentes.length === 0}
+            onClick={() => setSelecionados(todos ? [] : pendentes.map((j) => j.id))}
           >
             {todos ? "Limpar" : "Todos"}
           </Button>
         </div>
-        <ul className="divide-y divide-border">
-          {jovens.map((j) => {
-            const checked = selecionados.includes(j.id);
-            return (
-              <li key={j.id}>
-                <label className="flex cursor-pointer items-center gap-3 py-3">
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={(v) =>
-                      setSelecionados((prev) => (v ? [...prev, j.id] : prev.filter((x) => x !== j.id)))
-                    }
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium">{j.nome}</span>
-                    {j.patrulha && <span className="block text-xs text-muted-foreground">{j.patrulha}</span>}
-                  </span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+        {pendentes.length === 0 ? (
+          <p className="py-3 text-sm text-muted-foreground">
+            {alvo ? "Todos os jovens já concluíram esta etapa." : "Nenhum jovem cadastrado."}
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {pendentes.map((j) => {
+              const checked = selecionados.includes(j.id);
+              return (
+                <li key={j.id}>
+                  <label className="flex cursor-pointer items-center gap-3 py-3">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) =>
+                        setSelecionados((prev) => (v ? [...prev, j.id] : prev.filter((x) => x !== j.id)))
+                      }
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">{j.nome}</span>
+                      {j.patrulha && <span className="block text-xs text-muted-foreground">{j.patrulha}</span>}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
+
 
       <Button
         className="w-full bg-leaf text-leaf-foreground hover:bg-leaf/90"
