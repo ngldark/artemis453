@@ -135,7 +135,13 @@ function Lote() {
       <Card className="gap-4 p-4">
         <div className="space-y-1.5">
           <Label>Item de Acolhida ou Ação</Label>
-          <Select value={alvo} onValueChange={setAlvo}>
+          <Select
+            value={alvo}
+            onValueChange={(v) => {
+              setAlvo(v);
+              setSelecionados([]);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o item" />
             </SelectTrigger>
