@@ -72,7 +72,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
         setMembro(m);
         setSemAcesso(!m);
         if (m) {
-          if (m.perfil === "CHEFE") {
+          const perfilNormalizado = m.perfil?.toLowerCase();
+          if (perfilNormalizado === "chefe") {
             setPerfil("chefe");
             setChefe(m.nome);
           } else {

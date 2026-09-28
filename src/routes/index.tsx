@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Circle, Award } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   fetchAcolhidaCatalogo,
   fetchAcolhidaProgresso,
   fetchPromessas,
+  fetchEscoteiros,
   marcarAcolhida,
   desmarcarAcolhida,
   liberarPromessa,
@@ -41,12 +42,48 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
-    <AppShell>
+  component: IndexPage,
+});
+
+function IndexPage() {
+  const navigate = useNavigate();
+  const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+
+  // Busca a lista de escoteiros para alimentar o Dropdown do AppShell
+  const { data: escoteiros = [] } = useQuery({
+    queryKey: ["escoteiros"],
+    queryFn: fetchEscoteiros,
+  });
+
+  // Garante que o primeiro escoteiro da lista fique selecionado por padrão se nenhum estiver ativo
+  useEffect(() => {
+    if (escoteiros.length > 0 && !jovemId) {
+      setJovemId(escoteiros[0].id);
+    }
+  }, [escoteiros, jovemId, setJovemId]);
+
+  const handleAbaChange = (aba: string) => {
+    if (aba === "conquistas") {
+      navigate({ to: "/insignias" });
+    } else {
+      navigate({ to: "/" });
+    }
+  };
+
+  return (
+    <AppShell
+      perfil={perfil}
+      onPerfilChange={setPerfil}
+      escoteiros={escoteiros}
+      escoteiroSelecionadoId={jovemId}
+      onEscoteiroChange={setJovemId}
+      abaAtiva="progressao"
+      onAbaChange={handleAbaChange}
+    >
       <Acolhida />
     </AppShell>
-  ),
-});
+  );
+}
 
 function Acolhida() {
   const { perfil, jovemId } = useAppState();
@@ -59,7 +96,6 @@ function Acolhida() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        // Pega o nome do metadado do usuário ou usa a parte antes do @ no e-mail
         const nomeMeta = user.user_metadata?.["full_name"] || user.user_metadata?.["name"];
         if (nomeMeta) {
           setNomeChefe(String(nomeMeta));

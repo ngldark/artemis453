@@ -1,4 +1,5 @@
 import React from "react";
+import { Compass, Award } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,8 @@ export interface AppShellProps {
   escoteiroAtivoId?: string;
   onEscoteiroChange?: (id: string) => void;
   onEscoteiroSelect?: (id: string) => void;
+  abaAtiva?: string;
+  onAbaChange?: (aba: string) => void;
 }
 
 export function AppShell({
@@ -38,8 +41,11 @@ export function AppShell({
   escoteiroAtivoId,
   onEscoteiroChange,
   onEscoteiroSelect,
+  abaAtiva = "progressao",
+  onAbaChange,
 }: AppShellProps) {
-  const perfilAtivo = (perfil || currentPerfil || userPerfil || "CHEFE") as Perfil;
+  const rawPerfil = perfil || currentPerfil || userPerfil || "CHEFE";
+  const perfilUpper = String(rawPerfil).toUpperCase();
 
   const handlePerfilChange = (val: string) => {
     const p = val as Perfil;
@@ -56,15 +62,17 @@ export function AppShell({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-teal-800 text-white px-4 py-3 shadow-md flex items-center justify-between gap-2">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-20">
+      {/* Cabeçalho */}
+      <header className="bg-teal-800 text-white px-4 py-3 shadow-md flex items-center justify-between gap-2 sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <span className="text-xl">🧭</span>
           <h1 className="font-bold text-lg hidden sm:block">Progressão Escoteira</h1>
         </div>
 
         <div className="flex items-center gap-2">
-          <Select value={perfilAtivo} onValueChange={handlePerfilChange}>
+          {/* Dropdown de Perfil (Chefe / Escoteiro) */}
+          <Select value={perfilUpper} onValueChange={handlePerfilChange}>
             <SelectTrigger className="w-[110px] bg-teal-700/60 border-teal-600/50 text-white font-medium focus:ring-teal-400">
               <SelectValue />
             </SelectTrigger>
@@ -78,8 +86,9 @@ export function AppShell({
             </SelectContent>
           </Select>
 
-          {perfilAtivo === "CHEFE" && listaJovens.length > 0 && (
-            <Select value={jovemSelecionado} onValueChange={handleJovemChange}>
+          {/* Dropdown de Seleção de Jovem (Exibido se perfil for CHEFE) */}
+          {perfilUpper === "CHEFE" && listaJovens.length > 0 && (
+            <Select value={jovemSelecionado || undefined} onValueChange={handleJovemChange}>
               <SelectTrigger className="w-[160px] sm:w-[200px] bg-teal-700/60 border-teal-600/50 text-white font-medium focus:ring-teal-400">
                 <SelectValue placeholder="Selecione o jovem" />
               </SelectTrigger>
@@ -99,7 +108,33 @@ export function AppShell({
         </div>
       </header>
 
+      {/* Conteúdo Principal */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4">{children}</main>
+
+      {/* Barra Inferior Restaurada */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-40 flex items-center justify-around py-2 px-4">
+        <button
+          type="button"
+          onClick={() => onAbaChange?.("progressao")}
+          className={`flex flex-col items-center gap-1 text-xs font-semibold transition-colors ${
+            abaAtiva === "progressao" ? "text-teal-700" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Compass className="h-5 w-5" />
+          <span>Progressão</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onAbaChange?.("conquistas")}
+          className={`flex flex-col items-center gap-1 text-xs font-semibold transition-colors ${
+            abaAtiva === "conquistas" ? "text-teal-700" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Award className="h-5 w-5" />
+          <span>Conquistas</span>
+        </button>
+      </nav>
     </div>
   );
 }
