@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { Compass, Layers, Award, Shield, CheckSquare, Users } from "lucide-react";
 import {
@@ -8,78 +8,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Perfil } from "@/lib/progressao";
-import { useAppState } from "@/lib/app-state"; // Importação corrigida
+import { Perfil, fetchJovens } from "@/lib/progressao";
 
 export interface EscoteiroItem {
   id: string;
-  nome?: string;
-  nome_completo?: string;
-  name?: string;
+  nome?: string | null;
+  nome_completo?: string | null;
+  name?: string | null;
   patrulha?: string | null;
 }
 
 export interface AppShellProps {
   children?: React.ReactNode;
   perfil?: Perfil | string;
-  currentPerfil?: Perfil | string;
-  userPerfil?: Perfil | string;
   onPerfilChange?: (perfil: Perfil) => void;
-  onPerfilSelect?: (perfil: Perfil) => void;
   escoteiros?: EscoteiroItem[];
   jovens?: EscoteiroItem[];
   escoteiroSelecionadoId?: string;
-  selectedEscoteiroId?: string;
-  escoteiroAtivoId?: string;
   onEscoteiroChange?: (id: string) => void;
-  onEscoteiroSelect?: (id: string) => void;
-  abaAtiva?: string;
-  onAbaChange?: (aba: string) => void;
 }
 
 export function AppShell({
   children,
-  perfil: propPerfil,
-  currentPerfil: propCurrentPerfil,
-  userPerfil: propUserPerfil,
+  perfil: propPerfil = "CHEFE",
   onPerfilChange,
-  onPerfilSelect,
   escoteiros: propEscoteiros = [],
   jovens: propJovens = [],
   escoteiroSelecionadoId: propEscoteiroId,
-  selectedEscoteiroId: propSelectedId,
-  escoteiroAtivoId: propAtivoId,
   onEscoteiroChange,
-  onEscoteiroSelect,
 }: AppShellProps) {
   const location = useLocation();
   const currentPath = location?.pathname || "/";
 
-  // Sincroniza com o estado global caso as propriedades venham vazias
-  const appState = useAppState();
+  // Estados locais caso não venham controlados por props
+  const [perfilLocal, setPerfilLocal] = useState<string>(String(propPerfil || "CHEFE"));
+  const [jovensState, setJovensState] = useState<EscoteiroItem[]>([]);
+  const [jovemSelecionadoLocal, setJovemSelecionadoLocal] = useState<string>(propEscoteiroId || "");
 
-  const perfilGlobal = appState?.perfil || appState?.currentPerfil || "CHEFE";
-  const rawPerfil = propPerfil || propCurrentPerfil || propUserPerfil || perfilGlobal;
-  const perfilUpper = String(rawPerfil).toUpperCase();
-  const isChefe = perfilUpper === "chefe" || perfilUpper === "CHEFE";
+  const perfilUpper = String(perfilLocal).toUpperCase();
+  const isChefe = perfilUpper === "CHEFE";
+
+  // Carrega os jovens automaticamente caso não sejam passados via props
+  useEffect(() => {
+    if (propEscoteiros.length > 0) {
+      setJovensState(propEscoteiros);
+      return;
+    }
+    if (propJovens.length > 0) {
+      setJovensState(propJovens);
+      return;
+    }
+
+    let isMounted = true;
+    fetchJovens()
+      .then((data) => {
+        if (isMounted && data) {
+          setJovensState(data);
+          // Se houver jovens e nenhum selecionado, opcionalmente seleciona o primeiro se for chefe
+          if (data.length > 0 && !jovemSelecionadoLocal && !propEscoteiroId) {
+            // setJovemSelecionadoLocal(data[0].id);
+          }
+        }
+      })
+      .catch((err) => console.error("Erro ao carregar jovens no AppShell:", err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, [propEscoteiros, propJovens, propEscoteiroId, jovemSelecionadoLocal]);
 
   const handlePerfilChange = (val: string) => {
     const p = val as Perfil;
-    if (appState?.setPerfil) {
-      appState.setPerfil(p);
-    }
+    setPerfilLocal(p);
     onPerfilChange?.(p);
-    onPerfilSelect?.(p);
   };
 
-  const listaJovensBruta = 
-    propEscoteiros.length > 0 ? propEscoteiros : 
-    propJovens.length > 0 ? propJovens : 
-    (appState?.jovens || appState?.escoteiros || []);
-
-  const jovemSelecionado = 
-    propEscoteiroId || propSelectedId || propAtivoId || 
-    appState?.jovemId || appState?.escoteiroId || "";
+  const listaJovensBruta = propEscoteiros.length > 0 ? propEscoteiros : propJovens.length > 0 ? propJovens : jovensState;
+  const jovemSelecionado = propEscoteiroId || jovemSelecionadoLocal;
 
   // Garante a recuperação do nome independente do campo vindo do banco
   const getNomeJovem = (jovem: EscoteiroItem) => {
@@ -94,17 +99,11 @@ export function AppShell({
   });
 
   const handleJovemChange = (id: string) => {
-    if (appState?.setJovemId) {
-      appState.setJovemId(id);
-    }
-    if (appState?.setEscoteiroId) {
-      appState.setEscoteiroId(id);
-    }
+    setJovemSelecionadoLocal(id);
     onEscoteiroChange?.(id);
-    onEscoteiroSelect?.(id);
   };
 
-  // Mapeamento das rotas para a barra inferior (Em Lote e Jovens exclusivos para CHEFE)
+  // Mapeamento das rotas para a barra inferior
   const navItems = [
     { to: "/", label: "Acolhida", icon: Compass },
     { to: "/eixos", label: "Eixos", icon: Layers },

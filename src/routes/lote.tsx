@@ -17,6 +17,7 @@ import {
   hoje,
   type Bloco,
   type AcaoCatalogo,
+  type Jovem,
 } from "@/lib/progressao";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ function Lote() {
   const [data, setData] = useState(hoje());
   const [selecionados, setSelecionados] = useState<string[]>([]);
 
-  const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
+  const { data: jovens = [] } = useQuery<Jovem[]>({ queryKey: ["jovens"], queryFn: fetchJovens });
   const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery<Bloco[]>({ queryKey: ["blocos"], queryFn: fetchBlocos });
@@ -69,6 +70,11 @@ function Lote() {
     queryKey: ["acoes_progresso"],
     queryFn: () => fetchAcoesProgresso(),
   });
+
+  // Função auxiliar centralizada para normalizar a leitura do nome do jovem
+  const getNomeJovem = (jovem: any) => {
+    return jovem?.nome || jovem?.nome_completo || jovem?.name || "Sem nome";
+  };
 
   const grupos = useMemo(
     () =>
@@ -217,6 +223,7 @@ function Lote() {
           <ul className="divide-y divide-border">
             {pendentes.map((j) => {
               const checked = selecionados.includes(j.id);
+              const nomeCompleto = getNomeJovem(j);
               return (
                 <li key={j.id}>
                   <label className="flex cursor-pointer items-center gap-3 py-3">
@@ -227,7 +234,7 @@ function Lote() {
                       }
                     />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{j.nome}</span>
+                      <span className="block truncate text-sm font-medium">{nomeCompleto}</span>
                       {j.patrulha && <span className="block text-xs text-muted-foreground">{j.patrulha}</span>}
                     </span>
                   </label>
@@ -249,3 +256,5 @@ function Lote() {
     </div>
   );
 }
+
+export default Lote;

@@ -7,14 +7,10 @@ import { ConquistasPanel } from "@/components/ConquistasPanel";
 import { Card } from "@/components/ui/card";
 import { useAppState } from "@/lib/app-state";
 import {
-  fetchEspecialidades,
-  fetchEspecialidadesItens,
-  fetchProgressoEspecialidadesItens,
   fetchPromessas,
   fetchEscoteiros,
+  fetchEspecProgressoCompleto,
   formatarData,
-  marcarEspecialidadeItem,
-  desmarcarEspecialidadeItem,
 } from "@/lib/progressao";
 
 export const Route = createFileRoute("/especialidades")({
@@ -69,19 +65,15 @@ function EspecialidadesRoutePage() {
 
 function EspecialidadesPage() {
   const { jovemId } = useAppState();
+  const navigate = useNavigate();
 
   const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
   const promessa = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
 
-  const { data: especialidades = [] } = useQuery({ queryKey: ["especialidades"], queryFn: fetchEspecialidades });
-  const { data: especialidadesItens = [] } = useQuery({
-    queryKey: ["especialidades_itens"],
-    queryFn: fetchEspecialidadesItens,
-  });
-  
-  const { data: progressoEsp = [] } = useQuery({
-    queryKey: ["progresso_especialidades_itens", jovemId],
-    queryFn: () => fetchProgressoEspecialidadesItens(jovemId!),
+  // Busca o progresso detalhado das especialidades para o jovem selecionado
+  const { data: especialidadesProgresso = [] } = useQuery({
+    queryKey: ["especialidades_progresso_completo", jovemId],
+    queryFn: () => fetchEspecProgressoCompleto(jovemId!),
     enabled: !!jovemId,
   });
 
@@ -109,14 +101,11 @@ function EspecialidadesPage() {
       </div>
 
       <ConquistasPanel
-        tipo="especialidade"
-        catalogo={especialidades}
-        itens={especialidadesItens}
-        progresso={progressoEsp}
-        queryProgresso="progresso_especialidades_itens"
-        dataPromessa={promessa?.liberada_em || promessa?.data_promessa}
-        marcar={marcarEspecialidadeItem}
-        desmarcar={desmarcarEspecialidadeItem}
+        eixos={[]}
+        especialidades={especialidadesProgresso}
+        onSelectEspecialidade={(esp) => {
+          navigate({ to: "/especialidade/$id", params: { id: esp.id } });
+        }}
       />
     </div>
   );

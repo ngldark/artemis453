@@ -102,7 +102,6 @@ export function ConquistasPanel({
               const concluidasGeral = bloco.fixasConcluidas + bloco.variaveisConcluidas;
               const percentual = totalGeral > 0 ? Math.round((concluidasGeral / totalGeral) * 100) : 0;
 
-              // Regra da Alteração 02: Oculta 'Fixas' se for 0
               const textoProgresso = [
                 bloco.fixasTotal > 0 ? `Fixas: ${bloco.fixasConcluidas}/${bloco.fixasTotal}` : null,
                 `Variáveis: ${bloco.variaveisConcluidas}/${bloco.variaveisTotal}`,
@@ -162,7 +161,7 @@ export function ConquistasPanel({
             />
           </div>
 
-          {/* Alteração 03: Abas de Eixo para Especialidades */}
+          {/* Abas de Eixo para Especialidades */}
           {!termoBusca && (
             <div className="flex gap-1 p-1 bg-slate-100/80 rounded-xl overflow-x-auto">
               {EIXOS_CHAVES.map((key) => {
@@ -188,8 +187,9 @@ export function ConquistasPanel({
           {/* Cards de Especialidades */}
           <div className="space-y-3 mt-4">
             {especialidadesFiltradas.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                Nenhuma especialidade encontrada.
+              <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+                <p className="font-medium">Nenhuma especialidade encontrada.</p>
+                <p className="text-xs text-muted-foreground">Página sendo atualizada — consulte o Guia de Especialidades e Insígnias.</p>
               </div>
             ) : (
               especialidadesFiltradas.map((esp) => {
@@ -212,7 +212,7 @@ export function ConquistasPanel({
                         <p className="text-xs text-slate-500">
                           {temRequisitos
                             ? `${esp.concluidosCount}/${esp.totalRequisitos} requisitos`
-                            : "Sem requisitos cadastrados · Página sendo atualizada"}
+                            : "Sem requisitos cadastrados · Página sendo atualizada — consulte o Guia de Especialidades e Insígnias"}
                         </p>
                       </div>
                     </div>
@@ -246,3 +246,5 @@ export function ConquistasPanel({
     </div>
   );
 }
+
+export default ConquistasPanel;

@@ -7,14 +7,10 @@ import { ConquistasPanel } from "@/components/ConquistasPanel";
 import { Card } from "@/components/ui/card";
 import { useAppState } from "@/lib/app-state";
 import {
-  fetchInsignias,
-  fetchInsigniasItens,
-  fetchProgressoInsigniasItens,
   fetchPromessas,
   fetchJovens,
+  fetchInsigniasProgressoCompleto,
   formatarData,
-  marcarInsigniaItem,
-  desmarcarInsigniaItem,
 } from "@/lib/progressao";
 
 export const Route = createFileRoute("/insignias")({
@@ -69,19 +65,15 @@ function InsigniasRoutePage() {
 
 function InsigniasPage() {
   const { jovemId } = useAppState();
+  const navigate = useNavigate();
 
   const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
   const promessa = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
 
-  const { data: insignias = [] } = useQuery({ queryKey: ["insignias"], queryFn: fetchInsignias });
-  const { data: insigniasItens = [] } = useQuery({
-    queryKey: ["insignias_itens"],
-    queryFn: fetchInsigniasItens,
-  });
-  
-  const { data: progressoIns = [] } = useQuery({
-    queryKey: ["progresso_insignias_itens", jovemId],
-    queryFn: () => fetchProgressoInsigniasItens(jovemId!),
+  // Busca o progresso detalhado das insígnias para o jovem selecionado
+  const { data: insigniasProgresso = [] } = useQuery({
+    queryKey: ["insignias_progresso_completo", jovemId],
+    queryFn: () => fetchInsigniasProgressoCompleto(jovemId!),
     enabled: !!jovemId,
   });
 
@@ -109,14 +101,11 @@ function InsigniasPage() {
       </div>
 
       <ConquistasPanel
-        tipo="insignia"
-        catalogo={insignias}
-        itens={insigniasItens}
-        progresso={progressoIns}
-        queryProgresso="progresso_insignias_itens"
-        dataPromessa={promessa?.liberada_em || promessa?.data_promessa}
-        marcar={marcarInsigniaItem}
-        desmarcar={desmarcarInsigniaItem}
+        eixos={[]}
+        especialidades={insigniasProgresso}
+        onSelectEspecialidade={(ins) => {
+          navigate({ to: "/insignia/$id", params: { id: ins.id } });
+        }}
       />
     </div>
   );

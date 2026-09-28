@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Plus, Trash2, UserPlus, Users, X, CheckSquare, Square } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Users, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
@@ -41,12 +41,23 @@ function JovensPage() {
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ["jovens"] });
 
+  // Função auxiliar centralizada para normalizar a leitura do nome do jovem
+  const getNomeJovem = (jovem: any) => {
+    return jovem?.nome || jovem?.nome_completo || jovem?.name || "Sem nome";
+  };
+
   const salvar = useMutation({
     mutationFn: async () => {
+      const payload = { 
+        nome: nome.trim(), 
+        nome_completo: nome.trim(), 
+        patrulha: patrulha.trim() 
+      };
+
       if (editando) {
-        await atualizarJovem(editando.id, { nome: nome.trim(), patrulha: patrulha.trim() });
+        await atualizarJovem(editando.id, payload);
       } else {
-        await criarJovem({ nome: nome.trim(), patrulha: patrulha.trim() });
+        await criarJovem(payload);
       }
     },
     onSuccess: () => {
@@ -184,6 +195,7 @@ function JovensPage() {
                   <tbody className="divide-y divide-slate-100">
                     {jovens.map((jovem) => {
                       const selecionado = selecionados.includes(jovem.id);
+                      const nomeExibicao = getNomeJovem(jovem);
                       return (
                         <tr key={jovem.id} className={`hover:bg-slate-50/50 ${selecionado ? 'bg-amber-50/30' : ''}`}>
                           <td className="p-4">
@@ -195,7 +207,7 @@ function JovensPage() {
                               )}
                             </button>
                           </td>
-                          <td className="p-4 font-medium text-slate-800">{jovem.nome}</td>
+                          <td className="p-4 font-medium text-slate-800">{nomeExibicao}</td>
                           <td className="p-4">
                             <span className="inline-block px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
                               {jovem.patrulha || "Sem Patrulha"}
@@ -209,7 +221,7 @@ function JovensPage() {
                               size="icon"
                               onClick={() => {
                                 setEditando(jovem);
-                                setNome(jovem.nome || "");
+                                setNome(nomeExibicao);
                                 setPatrulha(jovem.patrulha || "");
                                 setDialogOpen(true);
                               }}
@@ -220,7 +232,7 @@ function JovensPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                if (confirm(`Deseja excluir ${jovem.nome}?`)) {
+                                if (confirm(`Deseja excluir ${nomeExibicao}?`)) {
                                   remover.mutate(jovem.id);
                                 }
                               }}
@@ -283,3 +295,5 @@ function JovensPage() {
     </AppShell>
   );
 }
+
+export default JovensPage;

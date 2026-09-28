@@ -1,342 +1,304 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, Award } from "lucide-react";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { Award, Compass, ShieldCheck, BookOpen, ChevronRight, Lock, Sparkles, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
-import { supabase } from "@/integrations/supabase/client";
 import {
   fetchAcolhidaCatalogo,
   fetchAcolhidaProgresso,
   fetchPromessas,
   fetchEscoteiros,
-  marcarAcolhida,
-  desmarcarAcolhida,
-  liberarPromessa,
-  removerPromessa,
-  formatarData,
-  hoje,
+  fetchEixos,
+  fetchBlocos,
+  fetchAcoesCatalogo,
+  fetchAcoesProgresso,
+  fetchEspecialidadesProgresso,
+  fetchInsigniasProgresso,
 } from "@/lib/progressao";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Período de Acolhida — Progressão Escoteira" },
+      { title: "Dashboard — Progressão Escoteira" },
       {
         name: "description",
-        content: "Acompanhe os 7 itens do Período de Acolhida do Ramo Escoteiro e a liberação da Promessa.",
+        content: "Painel de controle e acompanhamento da progressão do jovem escoteiro.",
       },
-      { property: "og:title", content: "Período de Acolhida — Progressão Escoteira" },
+      { property: "og:title", content: "Dashboard — Progressão Escoteira" },
       {
         property: "og:description",
-        content: "Acompanhe os 7 itens do Período de Acolhida do Ramo Escoteiro e a liberação da Promessa.",
+        content: "Painel de controle e acompanhamento da progressão do jovem escoteiro.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: IndexPage,
+  component: () => (
+    <AppShell>
+      <Dashboard />
+    </AppShell>
+  ),
 });
 
-function IndexPage() {
+function Dashboard() {
   const navigate = useNavigate();
-  // Verificação de perfil e estado global insensíveis a maiúsculas/minúsculas
-  const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+  const { jovemId, setJovemId } = useAppState();
 
-  // Busca a lista de escoteiros para alimentar o Dropdown do AppShell
-  const { data: escoteiros = [] } = useQuery({
-    queryKey: ["escoteiros"],
-    queryFn: fetchEscoteiros,
+  // Busca dados gerais para controle e estatísticas
+  const { data: escoteiros = [] } = useQuery({ queryKey: ["escoteiros"], queryFn: fetchEscoteiros });
+  const { data: itensAcolhida = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
+  const { data: progAcolhida = [] } = useQuery({
+    queryKey: ["acolhida_progresso", jovemId],
+    queryFn: () => fetchAcolhidaProgresso(jovemId!),
+    enabled: !!jovemId,
+  });
+  const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
+  const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
+  const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
+  const { data: acoesCatalogo = [] } = useQuery({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
+  const { data: progAcoes = [] } = useQuery({
+    queryKey: ["acoes_progresso", jovemId],
+    queryFn: () => fetchAcoesProgresso(jovemId!),
+    enabled: !!jovemId,
+  });
+  const { data: espProgresso = [] } = useQuery({
+    queryKey: ["especialidades_progresso", jovemId],
+    queryFn: () => fetchEspecialidadesProgresso(jovemId!),
+    enabled: !!jovemId,
+  });
+  const { data: insProgresso = [] } = useQuery({
+    queryKey: ["insignias_progresso", jovemId],
+    queryFn: () => fetchInsigniasProgresso(jovemId!),
+    enabled: !!jovemId,
   });
 
-  // Garante que o primeiro escoteiro da lista fique selecionado por padrão se nenhum estiver ativo
+  // Seleciona o primeiro escoteiro por padrão se nenhum estiver ativo
   useEffect(() => {
     if (escoteiros.length > 0 && !jovemId) {
       setJovemId(escoteiros[0].id);
     }
   }, [escoteiros, jovemId, setJovemId]);
 
-  const handleAbaChange = (aba: string) => {
-    if (aba === "conquistas") {
-      navigate({ to: "/insignias" });
-    } else {
-      navigate({ to: "/" });
-    }
-  };
+  // Cálculos da Acolhida
+  const feitosAcolhida = progAcolhida.length;
+  const totalAcolhida = itensAcolhida.length || 7;
+  const pctAcolhida = Math.round((feitosAcolhida / totalAcolhida) * 100);
 
-  return (
-    <AppShell
-      perfil={perfil}
-      onPerfilChange={setPerfil}
-      escoteiros={escoteiros}
-      escoteiroSelecionadoId={jovemId}
-      onEscoteiroChange={setJovemId}
-      abaAtiva="progressao"
-      onAbaChange={handleAbaChange}
-    >
-      <Acolhida />
-    </AppShell>
-  );
-}
-
-function Acolhida() {
-  const { perfil, jovemId } = useAppState();
-  const isChefe = String(perfil).toLowerCase() === "chefe";
-
-  const qc = useQueryClient();
-  const [data, setData] = useState(hoje());
-  const [dataPromessa, setDataPromessa] = useState(hoje());
-  const [nomeChefe, setNomeChefe] = useState("Chefia");
-
-  // Identificar automaticamente a chefia logada pelo Supabase Auth
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        const nomeMeta = user.user_metadata?.["full_name"] || user.user_metadata?.["name"];
-        if (nomeMeta) {
-          setNomeChefe(String(nomeMeta));
-        } else if (user.email) {
-          const usuarioEmail = user.email.split("@")[0] ?? "";
-          const formatado = usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1);
-          setNomeChefe(formatado);
-        }
-      }
-    });
-  }, []);
-
-  const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
-  const { data: progresso = [] } = useQuery({
-    queryKey: ["acolhida_progresso", jovemId],
-    queryFn: () => fetchAcolhidaProgresso(jovemId!),
-    enabled: !!jovemId,
-  });
-  const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["acolhida_progresso"] });
-    qc.invalidateQueries({ queryKey: ["promessas"] });
-    qc.invalidateQueries({ queryKey: ["escoteiros"] });
-  };
-
-  const toggle = useMutation({
-    mutationFn: async (item: { id: string; feito: boolean }) => {
-      if (!jovemId) return;
-      if (item.feito) await desmarcarAcolhida(item.id, jovemId);
-      else await marcarAcolhida({ jovemId, itemId: item.id, data, validadoPor: nomeChefe });
-    },
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const promessa = useMutation({
-    mutationFn: async () => {
-      if (!jovemId) return;
-      await liberarPromessa(jovemId, nomeChefe, dataPromessa);
-    },
-    onSuccess: () => {
-      invalidate();
-      toast.success("Data da Promessa registrada — Eixos liberados!");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const remover = useMutation({
-    mutationFn: async () => {
-      if (!jovemId) return;
-      await removerPromessa(jovemId);
-    },
-    onSuccess: () => {
-      invalidate();
-      toast.success("Promessa desfeita.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const feitos = progresso.length;
-  const total = itens.length || 7;
-  const pct = Math.round((feitos / total) * 100);
-  const completo = feitos >= total && total > 0;
+  // Verificação de Promessa
   const promessaLiberada = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
 
-  useEffect(() => {
-    const dataExistente = promessaLiberada?.liberada_em || promessaLiberada?.data_promessa;
-    if (dataExistente) {
-      setDataPromessa(dataExistente);
-    } else {
-      setDataPromessa(hoje());
-    }
-  }, [promessaLiberada?.liberada_em, promessaLiberada?.data_promessa, jovemId]);
+  // Estatísticas de Eixos/Ações (se com promessa)
+  const totalAcoes = acoesCatalogo.length;
+  const concluidasAcoes = progAcoes.length;
+  const pctGeralAcoes = totalAcoes > 0 ? Math.round((concluidasAcoes / totalAcoes) * 100) : 0;
+
+  // Contadores de Especialidades e Insígnias
+  const espNivel1 = espProgresso.filter((e) => e.nivel === 1 && e.concluida).length;
+  const espNivel2 = espProgresso.filter((e) => e.nivel === 2 && e.concluida).length;
+  const totalInsignias = insProgresso.filter((i) => i.concluida).length;
 
   return (
-    <div className="space-y-5">
-      <Card className="gap-3 border-leaf/30 p-5">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold">Período de Acolhida</h1>
-            <p className="text-sm text-muted-foreground">Os 7 passos antes da Promessa</p>
-          </div>
-          <span className="shrink-0 rounded-xl bg-leaf px-3 py-1.5 text-sm font-bold text-leaf-foreground">
-            {feitos}/{total} · {pct}%
-          </span>
-        </div>
-        <Progress value={pct} className="h-2.5" />
-      </Card>
+    <div className="space-y-6">
+      {/* CABEÇALHO DO DASHBOARD */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-bold tracking-tight">Painel de Progressão</h1>
+        <p className="text-sm text-muted-foreground">
+          {promessaLiberada
+            ? "Acompanhe o desenvolvimento completo nos Eixos e Conquistas."
+            : "O jovem encontra-se em Período de Acolhida. Conclua os passos para liberar os Eixos."}
+        </p>
+      </div>
 
-      {isChefe && (
-        <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="data">Data de realização (Retroativa)</Label>
-            <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Validado por</Label>
-            <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-              {nomeChefe} (automático)
+      {!promessaLiberada ? (
+        /* ESTADO 1: SEM PROMESSA (BLOQUEADO / ACOLHIDA EM ANDAMENTO) */
+        <div className="space-y-4">
+          <Card className="relative overflow-hidden border-leaf/40 bg-leaf/5 p-6 shadow-sm">
+            <div className="absolute right-4 top-4 text-leaf/20">
+              <Compass className="h-24 w-24" />
             </div>
-          </div>
-        </Card>
-      )}
-
-      <ul className="space-y-3">
-        {itens.map((item) => {
-          const reg = progresso.find((p) => (p.item_id || p.item_acolhida_id) === item.id);
-          const feito = !!reg;
-          return (
-            <li key={item.id}>
-              <Card
-                className={`gap-2 p-4 ${feito ? "border-leaf/40 bg-leaf/5" : ""}`}
-              >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-                  {feito ? (
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-leaf" />
-                  ) : (
-                    <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-semibold leading-snug">
-                      {item.ordem}. {item.titulo}
-                    </p>
-                    {item.descricao && (
-                      <p className="text-sm text-muted-foreground">{item.descricao}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {feito ? (
-                        <>
-                          <Badge className="bg-leaf text-leaf-foreground hover:bg-leaf">✓ Concluído</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            em {formatarData(reg?.data_realizacao || reg?.data_conclusao)}
-                          </span>
-                          {isChefe && reg?.validado_por && (
-                            <span className="text-xs text-muted-foreground">
-                              · validado por {reg.validado_por}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <Badge variant="secondary">Pendente</Badge>
-                      )}
-                    </div>
-                    {isChefe && (
-                      <div className="pt-2">
-                        <Button
-                          size="sm"
-                          variant={feito ? "outline" : "default"}
-                          disabled={!jovemId || toggle.isPending}
-                          onClick={() => toggle.mutate({ id: item.id, feito })}
-                        >
-                          {feito ? "Desmarcar" : "Marcar como concluído"}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </li>
-          );
-        })}
-      </ul>
-
-      <Card className="gap-3 border-gold/50 bg-gold/10 p-5">
-        <div className="flex items-center gap-2">
-          <Award className="h-5 w-5 shrink-0 text-gold-foreground" />
-          <p className="font-bold">Promessa Escoteira</p>
-        </div>
-        {promessaLiberada ? (
-          <>
-            <p className="text-sm">
-              Promessa feita em {formatarData(promessaLiberada.liberada_em || promessaLiberada.data_promessa)}
-              {isChefe && promessaLiberada.liberada_por
-                ? ` · registrada por ${promessaLiberada.liberada_por}`
-                : ""}
-              . Os Eixos estão liberados.
-            </p>
-            {isChefe && (
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div className="space-y-1.5">
-                  <Label htmlFor="data-promessa-edit">Data da Promessa</Label>
-                  <Input
-                    id="data-promessa-edit"
-                    type="date"
-                    value={dataPromessa}
-                    onChange={(e) => setDataPromessa(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="bg-gold text-gold-foreground hover:bg-gold/90"
-                    disabled={!jovemId || promessa.isPending}
-                    onClick={() => promessa.mutate()}
-                  >
-                    Salvar data
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!jovemId || remover.isPending}
-                    onClick={() => remover.mutate()}
-                  >
-                    Desfazer
-                  </Button>
-                </div>
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-leaf text-leaf-foreground">Período de Acolhida</Badge>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {feitosAcolhida} de {totalAcolhida} passos concluídos
+                </span>
               </div>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              {completo
-                ? "Todos os 7 itens concluídos — informe a data da Promessa para liberar os Eixos."
-                : `Faltam ${total - feitos} item(ns) para registrar a Promessa.`}
-            </p>
-            {isChefe && (
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div className="space-y-1.5">
-                  <Label htmlFor="data-promessa">Data da Promessa</Label>
-                  <Input
-                    id="data-promessa"
-                    type="date"
-                    value={dataPromessa}
-                    onChange={(e) => setDataPromessa(e.target.value)}
-                  />
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Rumo à Promessa Escoteira</h2>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Para habilitar os Eixos de Desenvolvimento (Desenvolvimento Físico, Intelectual, Caráter, Afetivo, Social e Espiritual), é necessário concluir os 7 passos da Acolhida e registrar a Promessa.
+                </p>
+              </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex justify-between text-xs font-medium">
+                  <span>Progresso da Acolhida</span>
+                  <span>{pctAcolhida}%</span>
                 </div>
+                <Progress value={pctAcolhida} className="h-2.5 bg-leaf/20" />
+              </div>
+              <div className="pt-2">
                 <Button
-                  className="bg-gold text-gold-foreground hover:bg-gold/90"
-                  disabled={!completo || !jovemId || !dataPromessa || promessa.isPending}
-                  onClick={() => promessa.mutate()}
+                  onClick={() => navigate({ to: "/acolhida" })}
+                  className="bg-leaf text-leaf-foreground hover:bg-leaf/90 gap-2"
                 >
-                  Registrar Promessa
+                  Acessar Período de Acolhida <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-            )}
-          </>
-        )}
-      </Card>
+            </div>
+          </Card>
+
+          {/* CARD DE BLOQUEIO DAS DEMAIS SEÇÕES */}
+          <Card className="grid gap-4 p-5 border-dashed border-muted-foreground/30 bg-muted/30">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-muted p-2 text-muted-foreground">
+                <Lock className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">Seções Bloqueadas Temporalmente</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Especialidades, Insígnias e os Eixos de Progressão exigem que o escoteiro tenha realizado a sua Promessa Escoteira. Conclua os itens pendentes na aba de Acolhida para liberar todo o conteúdo.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        /* ESTADO 2: COM PROMESSA (DASHBOARD COMPLETO) */
+        <div className="space-y-6">
+          {/* BANNER DE STATUS DA PROMESSA */}
+          <Card className="border-gold/50 bg-gradient-to-br from-gold/15 via-gold/5 to-transparent p-5 shadow-sm">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-gold/20 p-3 text-gold-foreground">
+                  <Award className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-base">Promessa Registrada</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Eixos de desenvolvimento e insígnias totalmente liberados.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-gold/40 hover:bg-gold/10 text-xs"
+                onClick={() => navigate({ to: "/acolhida" })}
+              >
+                Ver Detalhes da Acolhida
+              </Button>
+            </div>
+          </Card>
+
+          {/* GRID DE ESTATÍSTICAS RÁPIDAS */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="p-4 space-y-2 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-xs font-medium uppercase tracking-wider">Progresso Geral</span>
+                <Compass className="h-4 w-4 text-leaf" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{pctGeralAcoes}%</div>
+                <p className="text-xs text-muted-foreground">
+                  {concluidasAcoes} de {totalAcoes} ações concluídas
+                </p>
+              </div>
+              <Progress value={pctGeralAcoes} className="h-1.5" />
+            </Card>
+
+            <Card className="p-4 space-y-2 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-xs font-medium uppercase tracking-wider">Especialidades</span>
+                <BookOpen className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{espNivel1 + espNivel2}</div>
+                <div className="flex gap-2 pt-0.5 text-xs text-muted-foreground">
+                  <span>Nível 1: {espNivel1}</span>
+                  <span>·</span>
+                  <span>Nível 2: {espNivel2}</span>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-0 text-xs text-primary justify-start hover:bg-transparent"
+                onClick={() => navigate({ to: "/especialidades" })}
+              >
+                Gerenciar especialidades →
+              </Button>
+            </Card>
+
+            <Card className="p-4 space-y-2 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-xs font-medium uppercase tracking-wider">Insígnias</span>
+                <Sparkles className="h-4 w-4 text-amber-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{totalInsignias}</div>
+                <p className="text-xs text-muted-foreground">Insígnias e distintivos conquistados</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-0 text-xs text-primary justify-start hover:bg-transparent"
+                onClick={() => navigate({ to: "/insignias" })}
+              >
+                Ver insígnias conquistadas →
+              </Button>
+            </Card>
+          </div>
+
+          {/* CARTÕES DE NAVEGAÇÃO RÁPIDA */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Acesso Rápido</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Card
+                className="p-4 cursor-pointer hover:border-primary/50 transition-all flex items-center justify-between group"
+                onClick={() => navigate({ to: "/progresso" })}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-leaf/10 p-2.5 text-leaf">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">
+                      Eixos de Desenvolvimento
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Acompanhe as progressões por áreas</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </Card>
+
+              <Card
+                className="p-4 cursor-pointer hover:border-primary/50 transition-all flex items-center justify-between group"
+                onClick={() => navigate({ to: "/especialidades" })}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-500/10 p-2.5 text-blue-500">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">
+                      Catálogo de Especialidades
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Busque e solicite novas especialidades</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default Dashboard;
