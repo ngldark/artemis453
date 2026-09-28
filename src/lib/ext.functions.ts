@@ -82,23 +82,20 @@ export const extDb = createServerFn({ method: "POST" })
       "progresso_insignias_itens",
     ];
 
+    let targetEscoteiroId: string | number | undefined = undefined;
+
     if (perfilUsuario !== "CHEFE") {
       if (!meuId) throw new Error("Usuário não encontrado na tropa.");
 
       if (tabelasPessoais.includes(data.tabela)) {
-        if (data.op === "select") {
-          data.filtros = { escoteiro_id: meuId };
-        } else {
-          // Força o escoteiro_id para o próprio usuário e REMOVE validado_por para evitar auto-validação / ganho de wins
-          if (data.valores) {
-            data.valores["escoteiro_id"] = meuId;
-            delete data.valores["validado_por"]; 
-          }
-          data.filtros = { escoteiro_id: meuId };
+        targetEscoteiroId = meuId;
+        if (data.op !== "select" && data.valores) {
+          delete data.valores["validado_por"]; // Impede auto-validação / ganho de wins
+          data.valores["escoteiro_id"] = meuId;
         }
       } else if (data.tabela === "escoteiros") {
         if (data.op === "select") {
-          data.filtros = { id: meuId };
+          targetEscoteiroId = meuId;
         } else {
           throw new Error("Acesso negado: escoteiros não podem alterar cadastros.");
         }
@@ -108,35 +105,59 @@ export const extDb = createServerFn({ method: "POST" })
         }
       }
     } else {
-      // Validação de filtros seguros para perfis de chefe
-      if (tabelasPessoais.includes(data.tabela) && data.filtros) {
-        const allowedFilterKeys = ["escoteiro_id", "item_id", "acao_id", "id"];
-        for (const key of Object.keys(data.filtros)) {
-          if (!allowedFilterKeys.includes(key)) {
-            throw new Error(`Filtro não permitido: ${key}`);
-          }
-        }
+      if (data.filtros?.["escoteiro_id"]) {
+        targetEscoteiroId = data.filtros["escoteiro_id"];
       }
     }
     // ----------------------------------------------------
 
-    const filtros = Object.entries(data.filtros ?? {});
-    if ((data.op === "update" || data.op === "delete") && filtros.length === 0) throw new Error("Filtro obrigatório");
-
+    // --- EXECUÇÃO SEGURA DA QUERY (SEM FILTROS DINÂMICOS ARBITRÁRIOS) ---
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any;
+
     if (data.op === "select") {
       q = db.from(data.tabela).select("*").limit(5000);
+      if (data.tabela === "escoteiros" && perfilUsuario !== "CHEFE") {
+        q = q.eq("id", meuId);
+      } else if (tabelasPessoais.includes(data.tabela)) {
+        if (perfilUsuario !== "CHEFE") {
+          q = q.eq("escoteiro_id", meuId);
+        } else if (targetEscoteiroId) {
+          q = q.eq("escoteiro_id", targetEscoteiroId);
+        }
+      } else {
+        if (data.filtros?.["id"]) q = q.eq("id", data.filtros["id"]);
+        if (data.filtros?.["item_id"]) q = q.eq("item_id", data.filtros["item_id"]);
+        if (data.filtros?.["acao_id"]) q = q.eq("acao_id", data.filtros["acao_id"]);
+      }
     } else if (data.op === "insert") {
-      q = db.from(data.tabela).insert(data.valores ?? {});
+      const payload = data.valores ?? {};
+      if (tabelasPessoais.includes(data.tabela) && perfilUsuario !== "CHEFE") {
+        payload["escoteiro_id"] = meuId;
+        delete payload["validado_por"];
+      }
+      q = db.from(data.tabela).insert(payload);
     } else if (data.op === "update") {
-      q = db.from(data.tabela).update(data.valores ?? {});
-    } else {
+      const payload = data.valores ?? {};
+      if (tabelasPessoais.includes(data.tabela) && perfilUsuario !== "CHEFE") {
+        payload["escoteiro_id"] = meuId;
+        delete payload["validado_por"];
+      }
+      q = db.from(data.tabela).update(payload);
+      if (targetEscoteiroId && tabelasPessoais.includes(data.tabela)) {
+        q = q.eq("escoteiro_id", targetEscoteiroId);
+      }
+      if (data.filtros?.["id"]) q = q.eq("id", data.filtros["id"]);
+      if (data.filtros?.["item_id"]) q = q.eq("item_id", data.filtros["item_id"]);
+      if (data.filtros?.["acao_id"]) q = q.eq("acao_id", data.filtros["acao_id"]);
+    } else if (data.op === "delete") {
       q = db.from(data.tabela).delete();
-    }
-
-    for (const [k, v] of filtros) {
-      q = q.eq(k, v);
+      if (targetEscoteiroId && tabelasPessoais.includes(data.tabela)) {
+        q = q.eq("escoteiro_id", targetEscoteiroId);
+      }
+      if (data.filtros?.["id"]) q = q.eq("id", data.filtros["id"]);
+      if (data.filtros?.["item_id"]) q = q.eq("item_id", data.filtros["item_id"]);
+      if (data.filtros?.["acao_id"]) q = q.eq("acao_id", data.filtros["acao_id"]);
     }
 
     const { data: rows, error } = await q;
