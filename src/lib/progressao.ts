@@ -1,15 +1,4 @@
-Agora o arquivo progressao.ts
-
-src/lib/progressao.ts
-Função hoje() (linha 135): Adicionar operador de coalescência ou asserção (?? "" / as string) para garantir que o retorno nunca seja undefined.
-Interface Jovem: Declarar explicitamente a propriedade registro_ueb?: string | null; para evitar erro de assinatura de índice (noPropertyAccessFromIndexSignature).
-Função salvarJovem (linhas 459-460): Acessar dados["id"] via colchetes em vez de ponto (dados.id).
-Tipagens de retorno (fetchPromessas e fetchAcolhidaProgresso): Tratar campos opcionais (data_promessa, validado_por) para que o compilador não rejeite atribuições do tipo string | undefined.
-Exportação de alias: Adicionar export const fetchEscoteiros = fetchJovens; para atender telas que importam com essa nomenclatura.
-
-Codigo
-
-"import { extDb, TABELAS } from "./ext.functions";
+import { extDb, TABELAS } from "./ext.functions";
 
 export type TabelaNome = (typeof TABELAS)[number];
 export type Perfil = "escoteiro" | "chefe" | "ESCOTEIRO" | "CHEFE";
@@ -818,4 +807,4 @@ export async function desmarcarInsigniaItem(itemId: string, escoteiroId?: string
 
 export const marcarItemInsignia = marcarInsigniaItem;
 export const marcarInsignia = marcarInsigniaItem;
-export const toggleItemInsignia = marcarInsigniaItem;"
+export const toggleItemInsignia = marcarInsigniaItem;
