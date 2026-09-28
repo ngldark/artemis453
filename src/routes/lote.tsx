@@ -15,6 +15,8 @@ import {
   marcarAcolhida,
   marcarAcao,
   hoje,
+  type Bloco,
+  type AcaoCatalogo,
 } from "@/lib/progressao";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,8 +59,8 @@ function Lote() {
   const { data: jovens = [] } = useQuery({ queryKey: ["jovens"], queryFn: fetchJovens });
   const { data: itens = [] } = useQuery({ queryKey: ["acolhida_catalogo"], queryFn: fetchAcolhidaCatalogo });
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
-  const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
-  const { data: acoes = [] } = useQuery({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
+  const { data: blocos = [] } = useQuery<Bloco[]>({ queryKey: ["blocos"], queryFn: fetchBlocos });
+  const { data: acoes = [] } = useQuery<AcaoCatalogo[]>({ queryKey: ["acoes_catalogo"], queryFn: () => fetchAcoesCatalogo() });
   const { data: progAcolhida = [] } = useQuery({
     queryKey: ["acolhida_progresso"],
     queryFn: () => fetchAcolhidaProgresso(),

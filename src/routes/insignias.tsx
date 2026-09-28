@@ -11,7 +11,7 @@ import {
   fetchInsigniasItens,
   fetchProgressoInsigniasItens,
   fetchPromessas,
-  fetchEscoteiros,
+  fetchJovens,
   formatarData,
   marcarInsigniaItem,
   desmarcarInsigniaItem,
@@ -31,18 +31,18 @@ function InsigniasRoutePage() {
   const navigate = useNavigate();
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
 
-  // Busca a lista de escoteiros para alimentar o seletor no AppShell
-  const { data: escoteiros = [] } = useQuery({
-    queryKey: ["escoteiros"],
-    queryFn: fetchEscoteiros,
+  // Busca a lista de jovens para alimentar o seletor no AppShell
+  const { data: jovens = [] } = useQuery({
+    queryKey: ["jovens"],
+    queryFn: fetchJovens,
   });
 
-  // Garante que o primeiro escoteiro fique selecionado por padrão se nenhum estiver ativo
+  // Garante que o primeiro jovem fique selecionado por padrão se nenhum estiver ativo
   useEffect(() => {
-    if (escoteiros.length > 0 && !jovemId) {
-      setJovemId(escoteiros[0].id);
+    if (jovens.length > 0 && !jovemId) {
+      setJovemId(jovens[0].id);
     }
-  }, [escoteiros, jovemId, setJovemId]);
+  }, [jovens, jovemId, setJovemId]);
 
   const handleAbaChange = (aba: string) => {
     if (aba === "progressao") {
@@ -56,7 +56,7 @@ function InsigniasRoutePage() {
     <AppShell
       perfil={perfil}
       onPerfilChange={setPerfil}
-      escoteiros={escoteiros}
+      escoteiros={jovens}
       escoteiroSelecionadoId={jovemId}
       onEscoteiroChange={setJovemId}
       abaAtiva="conquistas"

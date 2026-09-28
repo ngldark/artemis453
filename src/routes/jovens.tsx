@@ -43,8 +43,11 @@ function JovensPage() {
 
   const salvar = useMutation({
     mutationFn: async () => {
-      if (editando) await atualizarJovem(editando.id, nome.trim(), patrulha.trim());
-      else await criarJovem(nome.trim(), patrulha.trim());
+      if (editando) {
+        await atualizarJovem(editando.id, { nome: nome.trim(), patrulha: patrulha.trim() });
+      } else {
+        await criarJovem({ nome: nome.trim(), patrulha: patrulha.trim() });
+      }
     },
     onSuccess: () => {
       toast.success(editando ? "Jovem atualizado!" : "Jovem cadastrado!");
@@ -206,7 +209,7 @@ function JovensPage() {
                               size="icon"
                               onClick={() => {
                                 setEditando(jovem);
-                                setNome(jovem.nome);
+                                setNome(jovem.nome || "");
                                 setPatrulha(jovem.patrulha || "");
                                 setDialogOpen(true);
                               }}

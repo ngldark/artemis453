@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Perfil } from "@/lib/progressao";
-import { useAppState } from "@/hooks/useAppState"; // Integrado para autonomia de estado e busca de jovens
+import { useAppState } from "@/lib/app-state"; // Importação corrigida
 
 export interface EscoteiroItem {
   id: string;

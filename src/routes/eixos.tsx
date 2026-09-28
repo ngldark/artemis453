@@ -19,6 +19,7 @@ import {
   hoje,
   type AcaoCatalogo,
   type Bloco,
+  type Eixo,
   type StatusBloco,
   type TipoAcao,
 } from "@/lib/progressao";
@@ -59,11 +60,11 @@ function Eixos() {
   const { jovemId } = useAppState();
   const [blocoAberto, setBlocoAberto] = useState<Bloco | null>(null);
 
-  const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
-  const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
+  const { data: eixos = [] } = useQuery<Eixo[]>({ queryKey: ["eixos"], queryFn: fetchEixos });
+  const { data: blocos = [] } = useQuery<Bloco[]>({ queryKey: ["blocos"], queryFn: () => fetchBlocos() });
   
   // Consulta de status dos blocos corrigida para o jovemId selecionado
-  const { data: status = [] } = useQuery({
+  const { data: status = [] } = useQuery<StatusBloco[]>({
     queryKey: ["status_blocos", jovemId],
     queryFn: () => fetchStatusBlocos(jovemId!),
     enabled: !!jovemId,

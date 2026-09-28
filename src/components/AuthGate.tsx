@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MembroProvider, type Membro } from "@/lib/membro";
-import { fetchMeuMembro } from "@/lib/progressao";
+import { MembroProvider } from "@/lib/membro";
+import { fetchMeuMembro, type Membro } from "@/lib/progressao";
 import { useAppState } from "@/lib/app-state";
 
 type Modo = "login" | "recuperar" | "nova-senha";
@@ -76,7 +76,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           const perfilNormalizado = String(m.perfil).toLowerCase();
           if (perfilNormalizado === "chefe") {
             setPerfil("chefe");
-            setChefe(m.nome);
+            setChefe(m.nome || "");
           } else {
             setPerfil("escoteiro");
             setJovemId(m.id);
