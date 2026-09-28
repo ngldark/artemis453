@@ -624,6 +624,62 @@ export async function fetchAcoesCatalogo(blocoId?: string) {
   return selQuiet("acoes_catalogo", blocoId ? { bloco_id: blocoId } : undefined);
 }
 
+// Adicione estas funções em src/lib/progressao.ts se elas não existirem:
+
+export async function fetchEspecProgressoCompleto(jovemId: string) {
+  // Ajuste conforme a sua implementação real de busca de especialidades para o jovem
+  const catalogo = await fetchEspecialidades();
+  const itens = await fetchEspecialidadesItens();
+  const progresso = await fetchProgressoEspecialidadesItens(jovemId);
+
+  // Exemplo de mapeamento básico caso retorne estruturado:
+  return catalogo.map((esp) => {
+    const itensEsp = itens.filter((i) => i.especialidade_id === esp.id);
+    const concluidos = itensEsp.filter((i) => 
+      progresso.some((p) => p.item_id === i.id && p.concluido)
+    ).length;
+
+    const total = itensEsp.length;
+    let nivel = 0;
+    if (total > 0 && concluidos === total) nivel = 2;
+    else if (total > 0 && concluidos >= Math.ceil(total / 2)) nivel = 1;
+
+    return {
+      ...esp,
+      concluidosCount: concluidos,
+      totalRequisitos: total,
+      nivelAtual: nivel,
+    };
+  });
+}
+
+export async function fetchInsigniasProgressoCompleto(jovemId: string) {
+  // Ajuste conforme a sua implementação real de busca de insígnias para o jovem
+  const catalogo = await fetchInsignias();
+  const itens = await fetchInsigniasItens();
+  const progresso = await fetchProgressoInsigniasItens(jovemId);
+
+  return catalogo.map((ins) => {
+    const itensIns = itens.filter((i) => i.insignia_id === ins.id);
+    const concluidos = itensIns.filter((i) => 
+      progresso.some((p) => p.item_id === i.id && p.concluido)
+    ).length;
+
+    const total = itensIns.length;
+    let nivel = 0;
+    if (total > 0 && concluidos === total) nivel = 2;
+    else if (total > 0 && concluidos >= Math.ceil(total / 2)) nivel = 1;
+
+    return {
+      ...ins,
+      concluidosCount: concluidos,
+      totalRequisitos: total,
+      nivelAtual: nivel,
+    };
+  });
+}
+
+
 export async function fetchStatusBlocos(escoteiroId?: string) {
   return carregarEixosEBlocos(escoteiroId);
 }
