@@ -1,6 +1,7 @@
 import { extDb, TABELAS } from "./ext.functions";
 
 export type TabelaNome = (typeof TABELAS)[number];
+export type Perfil = "CHEFE" | "ESCOTEIRO";
 
 // Mapeamento visual e amigável dos Eixos
 export const MAPA_EIXOS: Record<string, { nome: string; ordem: number }> = {
@@ -23,7 +24,7 @@ async function selQuiet<T = Record<string, unknown>>(
   }
 }
 
-// --- TIPOS ---
+// --- TIPOS DE PROGRESSÃO ---
 export interface AcaoProgresso {
   id: string;
   codigo: string;
@@ -189,7 +190,6 @@ export async function carregarEspecialidades(escoteiroId?: string): Promise<Espe
     if (itemId) progressoSet.set(itemId, p);
   }
 
-  // Agrupa itens com comparação case-insensitive
   const itensPorEspecialidade = new Map<string, RequisitoEspecialidade[]>();
   for (const item of itensRaw) {
     const espIdKey = String(item["especialidade_id"] ?? "").toUpperCase().trim();
@@ -250,4 +250,82 @@ export async function carregarEspecialidades(escoteiroId?: string): Promise<Espe
   }
 
   return resultado.sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+// --- RESTAURAÇÃO DE EXPORTAÇÕES REQUERIDAS PELAS ROTAS DA APLICAÇÃO ---
+
+export async function fetchMeuMembro() {
+  const res = await selQuiet("jovens");
+  return res[0] ?? null;
+}
+
+export async function fetchAcolhidaCatalogo() {
+  return selQuiet("acolhida_catalogo");
+}
+
+export async function fetchAcolhidaProgresso(escoteiroId?: string) {
+  return selQuiet("progresso_acolhida", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+}
+
+export async function marcarAcolhida(itemAcolhidaId: string, concluida: boolean, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "upsert",
+      tabela: "progresso_acolhida",
+      dados: { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId, concluida },
+    },
+  });
+}
+
+export async function liberarPromessa(escoteiroId: string, dataPromessa?: string) {
+  return extDb({
+    data: {
+      op: "update",
+      tabela: "jovens",
+      filtros: { id: escoteiroId },
+      dados: { promessa_liberada: true, data_promessa: dataPromessa ?? new Date().toISOString() },
+    },
+  });
+}
+
+export async function fetchEixos() {
+  return selQuiet("eixos");
+}
+
+export async function fetchBlocos(eixoId?: string) {
+  return selQuiet("blocos", eixoId ? { eixo_id: eixoId } : undefined);
+}
+
+export async function fetchAcoesCatalogo(blocoId?: string) {
+  return selQuiet("acoes_catalogo", blocoId ? { bloco_id: blocoId } : undefined);
+}
+
+export async function fetchStatusBlocos(escoteiroId?: string) {
+  return carregarEixosEBlocos(escoteiroId);
+}
+
+export async function marcarAcao(acaoId: string, concluida: boolean, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "upsert",
+      tabela: "progresso_acoes",
+      dados: { acao_id: acaoId, escoteiro_id: escoteiroId, concluida },
+    },
+  });
+}
+
+export async function fetchJovens() {
+  return selQuiet("jovens");
+}
+
+export async function criarJovem(dados: Record<string, unknown>) {
+  return extDb({ data: { op: "insert", tabela: "jovens", dados } });
+}
+
+export async function atualizarJovem(id: string, dados: Record<string, unknown>) {
+  return extDb({ data: { op: "update", tabela: "jovens", filtros: { id }, dados } });
+}
+
+export async function removerJovem(id: string) {
+  return extDb({ data: { op: "delete", tabela: "jovens", filtros: { id } } });
 }
