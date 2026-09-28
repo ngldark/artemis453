@@ -432,7 +432,13 @@ export async function fetchMeuMembro(): Promise<Membro | null> {
 }
 
 export async function fetchJovens(): Promise<Jovem[]> {
-  return selQuiet<Jovem>("escoteiros");
+  const lista = await selQuiet<Jovem>("escoteiros");
+  // Ordena alfabeticamente por nome
+  return lista.sort((a, b) => {
+    const nomeA = a.nome || a.nome_completo || a.name || "";
+    const nomeB = b.nome || b.nome_completo || b.name || "";
+    return nomeA.localeCompare(nomeB, "pt-BR", { sensitivity: "base" });
+  });
 }
 
 export const fetchEscoteiros = fetchJovens;
@@ -509,8 +515,19 @@ export async function removerPromessa(escoteiroId: string) {
 
 // --- CONSULTA E GERENCIAMENTO DE ACOLHIDA ---
 
-export async function fetchAcolhidaCatalogo() {
-  return selQuiet("acolhida_catalogo");
+export async function fetchAcolhidaCatalogo(): Promise<ItemAcolhida[]> {
+  const res = await selQuiet<Record<string, unknown>>("acolhida_catalogo");
+  return res.map((item, index) => {
+    const idStr = String(item["id"] ?? index + 1);
+    const descricao = String(item["descricao"] ?? item["titulo"] ?? "");
+    return {
+      ...item,
+      id: idStr,
+      ordem: Number(item["ordem"] ?? (isNaN(Number(idStr)) ? index + 1 : Number(idStr))),
+      titulo: String(item["titulo"] ?? descricao),
+      descricao: descricao,
+    };
+  }).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 }
 
 export async function fetchAcolhidaProgresso(escoteiroId?: string): Promise<AcolhidaProgresso[]> {

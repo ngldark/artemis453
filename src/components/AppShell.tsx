@@ -56,6 +56,7 @@ export function AppShell({
 
   const rawPerfil = perfil || currentPerfil || userPerfil || "CHEFE";
   const perfilUpper = String(rawPerfil).toUpperCase();
+  const isChefe = perfilUpper === "CHEFE";
 
   const handlePerfilChange = (val: string) => {
     const p = val as Perfil;
@@ -63,27 +64,34 @@ export function AppShell({
     onPerfilSelect?.(p);
   };
 
-  const listaJovens = escoteiros.length > 0 ? escoteiros : jovens;
+  const listaJovensBruta = escoteiros.length > 0 ? escoteiros : jovens;
   const jovemSelecionado = escoteiroSelecionadoId || selectedEscoteiroId || escoteiroAtivoId || "";
-
-  const handleJovemChange = (id: string) => {
-    onEscoteiroChange?.(id);
-    onEscoteiroSelect?.(id);
-  };
 
   // Garante a recuperação do nome independente do campo vindo do banco
   const getNomeJovem = (jovem: EscoteiroItem) => {
     return jovem.nome || jovem.nome_completo || jovem.name || "Sem nome";
   };
 
-  // Mapeamento das 6 rotas para a barra inferior
+  // Ordenação alfabética dos jovens pelo nome
+  const listaJovens = [...listaJovensBruta].sort((a, b) => {
+    const nomeA = getNomeJovem(a);
+    const nomeB = getNomeJovem(b);
+    return nomeA.localeCompare(nomeB, "pt-BR", { sensitivity: "base" });
+  });
+
+  const handleJovemChange = (id: string) => {
+    onEscoteiroChange?.(id);
+    onEscoteiroSelect?.(id);
+  };
+
+  // Mapeamento das rotas para a barra inferior (Em Lote e Jovens exclusivos para CHEFE)
   const navItems = [
     { to: "/", label: "Acolhida", icon: Compass },
     { to: "/eixos", label: "Eixos", icon: Layers },
     { to: "/especialidades", label: "Especialidades", icon: Award },
     { to: "/insignias", label: "Insígnias", icon: Shield },
-    { to: "/lote", label: "Em Lote", icon: CheckSquare },
-    ...(perfilUpper === "CHEFE" ? [{ to: "/jovens", label: "Jovens", icon: Users }] : []),
+    ...(isChefe ? [{ to: "/lote", label: "Em Lote", icon: CheckSquare }] : []),
+    ...(isChefe ? [{ to: "/jovens", label: "Jovens", icon: Users }] : []),
   ];
 
   return (
@@ -112,7 +120,7 @@ export function AppShell({
           </Select>
 
           {/* Dropdown de Seleção de Jovem (Exibido para CHEFE) */}
-          {perfilUpper === "CHEFE" && listaJovens.length > 0 && (
+          {isChefe && listaJovens.length > 0 && (
             <Select value={jovemSelecionado || undefined} onValueChange={handleJovemChange}>
               <SelectTrigger className="w-[170px] sm:w-[220px] bg-teal-700/60 border-teal-600/50 text-white font-medium focus:ring-teal-400 truncate">
                 <SelectValue placeholder="Selecione o jovem" />
@@ -139,7 +147,7 @@ export function AppShell({
       {/* Conteúdo Principal */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4">{children}</main>
 
-      {/* Barra Inferior Restaurada */}
+      {/* Barra Inferior */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-40 py-2 px-2">
         <div className="max-w-3xl mx-auto flex items-center justify-around overflow-x-auto gap-1">
           {navItems.map((item) => {
