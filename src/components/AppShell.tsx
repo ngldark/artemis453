@@ -180,7 +180,7 @@ export function AppShell({
                 to={item.to}
                 className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-lg text-xs font-semibold transition-colors ${
                   isActive
-                    = "text-teal-700 font-bold bg-teal-50"
+                    ? "text-teal-700 font-bold bg-teal-50"
                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                 }`}
               >
