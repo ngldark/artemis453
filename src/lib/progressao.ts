@@ -338,7 +338,7 @@ function mapCatalogo(r: Row): CatalogoConquista {
     id: String(r.id),
     nome: pickStr(r, ["nome", "titulo", "name"], "Sem nome"),
     descricao: pickStr(r, ["descricao", "resumo", "observacao"]) || null,
-    categoria: pickStr(r, ["categoria", "area", "grupo", "ramo_conhecimento", "ramo"]) || null,
+    categoria: pickStr(r, ["categoria", "area", "grupo", "ramo_conhecimento", "ramo", "eixo_id"]) || null,
     imagem: pickStr(r, ["imagem", "imagem_url", "badge", "icone", "foto", "url_imagem"]) || null,
   };
 }
@@ -362,15 +362,17 @@ function mapProgressoItem(r: Row): ProgressoItemConquista {
   };
 }
 
+// CORRIGIDO: Apontando para "especialidades_catalogo"
 export async function fetchEspecialidades(): Promise<CatalogoConquista[]> {
-  const rows = await selQuiet("especialidades");
+  const rows = await selQuiet("especialidades_catalogo");
   return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+// CORRIGIDO: Apontando para "especialidades_itens" ou tabela correspondente caso necessário
 export async function fetchEspecialidadesItens(): Promise<ItemConquista[]> {
   const rows = await selQuiet("especialidades_itens");
   return rows
-    .map((r) => mapItem(r, ["especialidade_id"]))
+    .map((r) => mapItem(r, ["especialidade_id", "catalogo_id"]))
     .sort((a, b) => a.catalogo_id.localeCompare(b.catalogo_id) || a.ordem - b.ordem);
 }
 
@@ -379,15 +381,17 @@ export async function fetchProgressoEspecialidadesItens(jovemId?: string): Promi
   return rows.map(mapProgressoItem);
 }
 
+// CORRIGIDO: Apontando para "insignias_catalogo"
 export async function fetchInsignias(): Promise<CatalogoConquista[]> {
-  const rows = await selQuiet("insignias");
+  const rows = await selQuiet("insignias_catalogo");
   return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+// CORRIGIDO: Apontando para "insignias_itens"
 export async function fetchInsigniasItens(): Promise<ItemConquista[]> {
   const rows = await selQuiet("insignias_itens");
   return rows
-    .map((r) => mapItem(r, ["insignia_id"]))
+    .map((r) => mapItem(r, ["insignia_id", "catalogo_id"]))
     .sort((a, b) => a.catalogo_id.localeCompare(b.catalogo_id) || a.ordem - b.ordem);
 }
 

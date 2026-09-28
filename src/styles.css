@@ -9,13 +9,6 @@
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
  */
 
 @theme inline {
@@ -59,42 +52,70 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Cores Customizadas Escoteiras */
+  --color-leaf: var(--leaf);
+  --color-leaf-foreground: var(--leaf-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-ouro: var(--ouro);
+  --color-ouro-foreground: var(--ouro-foreground);
+  --color-prata: var(--prata);
+  --color-prata-foreground: var(--prata-foreground);
 }
 
+/* ---- Paleta Escoteira (Modo Claro) ---- */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --radius: 0.85rem;
+  --background: #FAFAFA;
+  --foreground: #1E293B;
+  --card: #FFFFFF;
+  --card-foreground: #1E293B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E293B;
+  
+  --primary: #007466;                 /* Verde Escuro Institucional */
+  --primary-foreground: #FFFFFF;      /* Texto do botão principal (Branco) */
+  
+  --secondary: #E8F5E9;               /* Verde Claro de fundo */
+  --secondary-foreground: #007466;    /* Texto nos botões secundários */
+  
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  
+  --accent: #33b8a8;                  /* Destaque / Amarelo-Turquesa */
+  --accent-foreground: #1E293B;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #007466;                    /* Anel de foco ao clicar */
+
+  --chart-1: #007466;
+  --chart-2: #33b8a8;
+  --chart-3: #006B3F;
+  --chart-4: #C9A227;
+  --chart-5: #64748B;
+
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1E293B;
+  --sidebar-primary: #007466;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E8F5E9;
+  --sidebar-accent-foreground: #007466;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #007466;
+
+  --leaf: #006B3F;                    /* Verde Folha / Progresso */
+  --leaf-foreground: #FFFFFF;
+  --gold: #33b8a8;                    /* Amarelo/Dourado do Lenço */
+  --gold-foreground: #1E293B;
+  --ouro: #C9A227;                    /* Nível 2 — especialidade completa */
+  --ouro-foreground: #3D2E00;
+  --prata: #8E99A4;                   /* Nível 1 — metade cumprida */
+  --prata-foreground: #1E293B;
 }
 
 .dark {
@@ -141,75 +162,4 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
-}
-
-/* ---- Paleta Escoteira: azul institucional, verde folha, amarelo dourado ---- */
-/* :root {
-  --background: oklch(0.985 0.008 120);
-  --foreground: oklch(0.24 0.045 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.045 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.045 250);
-  --primary: oklch(0.45 0.13 250);
-  --primary-foreground: oklch(0.99 0.01 250);
-  --secondary: oklch(0.93 0.05 140);
-  --secondary-foreground: oklch(0.3 0.08 150);
-  --muted: oklch(0.955 0.012 150);
-  --muted-foreground: oklch(0.5 0.03 220);
-  --accent: oklch(0.86 0.15 92);
-  --accent-foreground: oklch(0.3 0.06 80);
-  --border: oklch(0.9 0.02 200);
-  --input: oklch(0.9 0.02 200);
-  --ring: oklch(0.55 0.12 250);
-  --leaf: oklch(0.55 0.13 148);
-  --leaf-foreground: oklch(0.99 0.01 150);
-  --gold: oklch(0.8 0.15 88);
-  --gold-foreground: oklch(0.3 0.07 80);
-  --radius: 0.85rem;
-} */
-:root {
-  --background: #FAFAFA;
-  --foreground: #1E293B;
-  --card: #FFFFFF;
-  --card-foreground: #1E293B;
-  --popover: #FFFFFF;
-  --popover-foreground: #1E293B;
-  
-  --primary: #007466;                 /* Verde Escuro (Substituiu o Azul) */
-  --primary-foreground: #FFFFFF;      /* Texto do botão principal (Branco) */
-  
-  --secondary: #E8F5E9;               /* Verde Claro de fundo */
-  --secondary-foreground: #007466;     /* Texto nos botões secundários */
-  
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  
-  --accent: #33b8a8;                  /* Destaque / Amarelo */
-  --accent-foreground: #1E293B;
-  
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #007466;                    /* Anel de foco ao clicar */
-
-  --leaf: #006B3F;                    /* Verde Folha / Progresso */
-  --leaf-foreground: #FFFFFF;
-  --gold: #33b8a8;                    /* Amarelo/Dourado do Lenço */
-  --gold-foreground: #1E293B;
-  --ouro: #C9A227;                    /* Nível 2 — especialidade completa */
-  --ouro-foreground: #3D2E00;
-  --prata: #8E99A4;                   /* Nível 1 — metade cumprida */
-  --prata-foreground: #1E293B;
-  --radius: 0.85rem;
-}
-
-@theme inline {
-  --color-leaf: var(--leaf);
-  --color-leaf-foreground: var(--leaf-foreground);
-  --color-gold: var(--gold);
-  --color-gold-foreground: var(--gold-foreground);
-  --color-ouro: var(--ouro);
-  --color-ouro-foreground: var(--ouro-foreground);
-  --color-prata: var(--prata);
-  --color-prata-foreground: var(--prata-foreground);
 }
