@@ -154,7 +154,7 @@ function JovensPage() {
           <CardContent className="p-0">
             {isLoading ? (
               <div className="p-8 text-center text-sm text-slate-500">Carregando membros da tropa...</div>
-             : jovens.length === 0 ? (
+            ) : jovens.length === 0 ? (
               <div className="p-8 text-center text-sm text-slate-500">Nenhum jovem cadastrado até o momento.</div>
             ) : (
               <div className="overflow-x-auto">
