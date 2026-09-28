@@ -1,305 +1,248 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Award, CheckCircle2, Circle, Medal, Lock } from "lucide-react";
-import { toast } from "sonner";
-import { useAppState } from "@/lib/app-state";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import {
-  AVISO_CATALOGO_VAZIO,
-  mensagemConquista,
-  statusConquista,
-  visualConquista,
-  type TipoConquista,
-} from "@/lib/conquistas";
-import {
-  formatarData,
-  hoje,
-  type CatalogoConquista,
-  type ItemConquista,
-  type ProgressoItemConquista,
+  EixoProgresso,
+  EspecialidadeProgresso,
+  MAPA_EIXOS,
 } from "@/lib/progressao";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { Search } from "lucide-react";
 
-type Props = {
-  tipo: TipoConquista;
-  catalogo: CatalogoConquista[];
-  itens: ItemConquista[];
-  progresso: ProgressoItemConquista[];
-  queryProgresso: string;
-  dataPromessa?: string | null; // Adicionado para receber a trava da promessa
-  marcar: (input: { jovemId: string; itemId: string; data: string; validadoPor: string }) => Promise<void>;
-  desmarcar: (jovemId: string, itemId: string) => Promise<void>;
-};
+interface ConquistasPanelProps {
+  eixos: EixoProgresso[];
+  especialidades: EspecialidadeProgresso[];
+  onSelectBloco?: (blocoId: string) => void;
+  onSelectEspecialidade?: (esp: EspecialidadeProgresso) => void;
+}
 
-export function ConquistasPanel({ tipo, catalogo, itens, progresso, queryProgresso, dataPromessa, marcar, desmarcar }: Props) {
-  const { perfil, jovemId } = useAppState();
-  const qc = useQueryClient();
-  const [busca, setBusca] = useState("");
-  const [aberto, setAberto] = useState<CatalogoConquista | null>(null);
-  const [data, setData] = useState(hoje());
-  const [nomeChefe, setNomeChefe] = useState("Chefia");
+const EIXOS_CHAVES = [
+  "EIXO_HABILIDADES",
+  "EIXO_MEIO_AMBIENTE",
+  "EIXO_PAZ",
+  "EIXO_SAUDE",
+];
 
-  // Hard Dependency da Promessa
-  const temPromessa = Boolean(dataPromessa);
+export function ConquistasPanel({
+  eixos,
+  especialidades,
+  onSelectBloco,
+  onSelectEspecialidade,
+}: ConquistasPanelProps) {
+  const [abaPrincipal, setAbaPrincipal] = useState<"eixos" | "especialidades">("eixos");
+  const [eixoEspecialidadeAtivo, setEixoEspecialidadeAtivo] = useState<string>("EIXO_HABILIDADES");
+  const [eixoBlocoAtivo, setEixoBlocoAtivo] = useState<string>("EIXO_HABILIDADES");
+  const [buscaEspecialidade, setBuscaEspecialidade] = useState<string>("");
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      const nomeMeta = user.user_metadata?.["full_name"] || user.user_metadata?.["name"];
-      if (nomeMeta) {
-        setNomeChefe(String(nomeMeta));
-      } else if (user.email) {
-        const usuarioEmail = user.email.split("@")[0] ?? "";
-        setNomeChefe(usuarioEmail.charAt(0).toUpperCase() + usuarioEmail.slice(1));
-      }
-    });
-  }, []);
+  const termoBusca = buscaEspecialidade.trim().toLowerCase();
 
-  const feitosPorItem = useMemo(() => {
-    const m = new Map<string, ProgressoItemConquista>();
-    progresso.forEach((p) => m.set(p.item_id, p));
-    return m;
-  }, [progresso]);
-
-  const itensPorCatalogo = useMemo(() => {
-    const m = new Map<string, ItemConquista[]>();
-    itens.forEach((item) => {
-      const lista = m.get(item.catalogo_id) ?? [];
-      lista.push(item);
-      m.set(item.catalogo_id, lista);
-    });
-    return m;
-  }, [itens]);
-
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return catalogo;
-    return catalogo.filter(
-      (c) =>
-        c.nome.toLowerCase().includes(q) ||
-        (c.categoria ?? "").toLowerCase().includes(q) ||
-        (c.descricao ?? "").toLowerCase().includes(q),
-    );
-  }, [busca, catalogo]);
-
-  const grupos = useMemo(() => {
-    const map = new Map<string, CatalogoConquista[]>();
-    filtrados.forEach((c) => {
-      const key = c.categoria || "Geral";
-      const lista = map.get(key) ?? [];
-      lista.push(c);
-      map.set(key, lista);
-    });
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
-  }, [filtrados]);
-
-  const toggle = useMutation({
-    mutationFn: async (item: { id: string; feito: boolean; catalogoId: string }) => {
-      if (!jovemId || !temPromessa) return { subiu: null as string | null };
-      const doCatalogo = itensPorCatalogo.get(item.catalogoId) ?? [];
-      const total = doCatalogo.length;
-      const feitosAntes = doCatalogo.filter((i) => feitosPorItem.has(i.id)).length;
-      const statusAntes = statusConquista(feitosAntes, total);
-
-      if (item.feito) await desmarcar(jovemId, item.id);
-      else await marcar({ jovemId, itemId: item.id, data, validadoPor: nomeChefe });
-
-      const feitosDepois = item.feito ? Math.max(0, feitosAntes - 1) : feitosAntes + 1;
-      const statusDepois = statusConquista(feitosDepois, total);
-      const msg = mensagemConquista(tipo, statusDepois);
-      const subiu = !item.feito && msg && statusDepois !== statusAntes ? msg : null;
-      return { subiu };
-    },
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: [queryProgresso] });
-      if (res?.subiu) toast.success(res.subiu);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  // Filtragem de especialidades por busca ou por aba de eixo
+  const especialidadesFiltradas = especialidades.filter((esp) => {
+    const atendeBusca = !termoBusca || esp.nome.toLowerCase().includes(termoBusca);
+    const atendeEixo = termoBusca ? true : esp.eixoId.toUpperCase().trim() === eixoEspecialidadeAtivo;
+    return atendeBusca && atendeEixo;
   });
 
-  // Se o jovem não tiver Promessa, bloqueia o painel visualmente
-  if (!temPromessa) {
-    return (
-      <Card className="gap-4 p-8 text-center border-amber-300 bg-amber-50/50">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-800">
-          <Lock className="h-6 w-6" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="font-bold text-lg text-amber-900">Acesso Restrito por Promessa</h3>
-          <p className="text-sm text-amber-800">
-            O jovem selecionado ainda não possui a data da Promessa cadastrada no perfil. É obrigatório registrar a Promessa Escoteira para iniciar especialidades e insígnias.
-          </p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (catalogo.length === 0) {
-    return (
-      <Card className="gap-2 p-6 text-center">
-        <p className="text-sm text-muted-foreground">{AVISO_CATALOGO_VAZIO}</p>
-      </Card>
-    );
-  }
-
-  const tituloAberto = aberto?.nome ?? "";
-  const itensAbertos = aberto ? (itensPorCatalogo.get(aberto.id) ?? []) : [];
-  const feitosAbertos = itensAbertos.filter((i) => feitosPorItem.has(i.id)).length;
-  const statusAberto = statusConquista(feitosAbertos, itensAbertos.length);
-  const visualAberto = visualConquista(statusAberto);
-  const avisoAberto = mensagemConquista(tipo, statusAberto);
+  const eixoAtualBlocos = eixos.find(
+    (e) => e.id.toUpperCase().trim() === eixoBlocoAtivo
+  );
 
   return (
-    <div className="space-y-4">
-      <Input
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder={`Buscar ${tipo === "especialidade" ? "especialidade" : "insígnia"}...`}
-      />
+    <div className="space-y-6">
+      {/* Abas Principais (Eixos, Blocos e Ações vs Especialidades) */}
+      <div className="flex border-b border-slate-200 gap-4">
+        <button
+          onClick={() => setAbaPrincipal("eixos")}
+          className={`pb-3 font-semibold text-sm sm:text-base border-b-2 transition-colors ${
+            abaPrincipal === "eixos"
+              ? "border-teal-600 text-teal-700"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Eixos, Blocos e Ações
+        </button>
+        <button
+          onClick={() => setAbaPrincipal("especialidades")}
+          className={`pb-3 font-semibold text-sm sm:text-base border-b-2 transition-colors ${
+            abaPrincipal === "especialidades"
+              ? "border-teal-600 text-teal-700"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Especialidades
+        </button>
+      </div>
 
-      {grupos.map(([grupo, lista]) => (
-        <section key={grupo} className="space-y-2">
-          {grupos.length > 1 && <h2 className="text-sm font-semibold text-muted-foreground">{grupo}</h2>}
-          {lista.map((c) => {
-            const doCatalogo = itensPorCatalogo.get(c.id) ?? [];
-            const total = doCatalogo.length;
-            const feitos = doCatalogo.filter((i) => feitosPorItem.has(i.id)).length;
-            const status = statusConquista(feitos, total);
-            const visual = visualConquista(status);
-            const pct = total > 0 ? Math.round((feitos / total) * 100) : 0;
-            const Icon = tipo === "especialidade" ? Award : Medal;
-            return (
-              <Card
-                key={c.id}
-                role="button"
-                onClick={() => setAberto(c)}
-                className={`cursor-pointer gap-2 p-4 transition hover:border-primary/40 ${visual.card}`}
-              >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                  <span
-                    className={`grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl ${visual.badge}`}
-                  >
-                    {c.imagem ? (
-                      <img src={c.imagem} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <Icon className="h-5 w-5" />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{c.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {total > 0 ? `${feitos}/${total} requisitos` : "Sem requisitos cadastrados"}
-                    </p>
+      {/* ABA 1: EIXOS, BLOCOS E AÇÕES */}
+      {abaPrincipal === "eixos" && (
+        <div className="space-y-4">
+          {/* Navegação de Eixos para Blocos */}
+          <div className="flex gap-1 p-1 bg-slate-100/80 rounded-xl overflow-x-auto">
+            {EIXOS_CHAVES.map((key) => {
+              const meta = MAPA_EIXOS[key] ?? { nome: key };
+              const selected = eixoBlocoAtivo === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setEixoBlocoAtivo(key)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
+                    selected
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  }`}
+                >
+                  {meta.nome}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lista de Blocos do Eixo Selecionado */}
+          <div className="space-y-3 mt-4">
+            {eixoAtualBlocos?.blocos.map((bloco) => {
+              const totalGeral = bloco.fixasTotal + bloco.variaveisTotal;
+              const concluidasGeral = bloco.fixasConcluidas + bloco.variaveisConcluidas;
+              const percentual = totalGeral > 0 ? Math.round((concluidasGeral / totalGeral) * 100) : 0;
+
+              // Regra da Alteração 02: Oculta 'Fixas' se for 0
+              const textoProgresso = [
+                bloco.fixasTotal > 0 ? `Fixas: ${bloco.fixasConcluidas}/${bloco.fixasTotal}` : null,
+                `Variáveis: ${bloco.variaveisConcluidas}/${bloco.variaveisTotal}`,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+
+              return (
+                <div
+                  key={bloco.id}
+                  onClick={() => onSelectBloco?.(bloco.id)}
+                  className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-slate-900 font-semibold text-lg">{bloco.nome}</h3>
+                      <p className="text-slate-500 text-sm font-medium mt-0.5">{textoProgresso}</p>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                        percentual === 100
+                          ? "bg-emerald-100 text-emerald-800"
+                          : percentual > 0
+                          ? "bg-teal-100 text-teal-800"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {percentual === 100 ? "Concluído" : percentual > 0 ? `${percentual}%` : "Não Iniciado"}
+                    </span>
                   </div>
-                  <Badge className={`shrink-0 ${visual.badge}`}>{visual.label}</Badge>
-                </div>
-                {status === "sem_itens" ? (
-                  <p className="text-xs text-muted-foreground">{AVISO_CATALOGO_VAZIO}</p>
-                ) : (
-                  <Progress value={pct} className={`h-1.5 ${visual.trilha}`} indicatorClassName={visual.barra} />
-                )}
-              </Card>
-            );
-          })}
-        </section>
-      ))}
 
-      <Dialog open={!!aberto} onOpenChange={(o) => !o && setAberto(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-left">{tituloAberto}</DialogTitle>
-          </DialogHeader>
-
-          {statusAberto === "sem_itens" ? (
-            <p className="text-sm text-muted-foreground">{AVISO_CATALOGO_VAZIO}</p>
-          ) : (
-            <>
-              {avisoAberto && (
-                <div className={`rounded-xl border px-3 py-2 text-sm font-semibold ${visualAberto.card}`}>
-                  {avisoAberto}
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-3">
+                    <div
+                      className="bg-teal-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${percentual}%` }}
+                    />
+                  </div>
                 </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {feitosAbertos}/{itensAbertos.length} requisitos · Nível 1 ao cumprir metade · Nível 2 ao cumprir todos
-              </p>
-              <Progress
-                value={itensAbertos.length ? Math.round((feitosAbertos / itensAbertos.length) * 100) : 0}
-                className={`h-2 ${visualAberto.trilha}`}
-                indicatorClassName={visualAberto.barra}
-              />
-            </>
-          )}
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-          {perfil === "chefe" && itensAbertos.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="conquista-data">Data</Label>
-                <Input id="conquista-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Validado por</Label>
-                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                  {nomeChefe} (automático)
-                </div>
-              </div>
+      {/* ABA 2: ESPECIALIDADES */}
+      {abaPrincipal === "especialidades" && (
+        <div className="space-y-4">
+          {/* Campo de Busca */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Buscar especialidade..."
+              value={buscaEspecialidade}
+              onChange={(e) => setBuscaEspecialidade(e.target.value)}
+              className="pl-9 bg-slate-50/50 border-slate-200 rounded-xl"
+            />
+          </div>
+
+          {/* Alteração 03: Abas de Eixo para Especialidades */}
+          {!termoBusca && (
+            <div className="flex gap-1 p-1 bg-slate-100/80 rounded-xl overflow-x-auto">
+              {EIXOS_CHAVES.map((key) => {
+                const meta = MAPA_EIXOS[key] ?? { nome: key };
+                const selected = eixoEspecialidadeAtivo === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setEixoEspecialidadeAtivo(key)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
+                      selected
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                    }`}
+                  >
+                    {meta.nome}
+                  </button>
+                );
+              })}
             </div>
           )}
 
-          {itensAbertos.length > 0 && (
-            <ul className="space-y-3">
-              {itensAbertos.map((item) => {
-                const reg = feitosPorItem.get(item.id);
-                const feito = !!reg;
+          {/* Cards de Especialidades */}
+          <div className="space-y-3 mt-4">
+            {especialidadesFiltradas.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                Nenhuma especialidade encontrada.
+              </div>
+            ) : (
+              especialidadesFiltradas.map((esp) => {
+                const temRequisitos = esp.totalRequisitos > 0;
+
                 return (
-                  <li
-                    key={item.id}
-                    className={`rounded-xl border p-3 ${feito ? "border-leaf/40 bg-leaf/5" : "border-border"}`}
+                  <div
+                    key={esp.id}
+                    onClick={() => temRequisitos && onSelectEspecialidade?.(esp)}
+                    className={`p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between transition-all ${
+                      temRequisitos ? "cursor-pointer hover:shadow-md" : "opacity-80"
+                    }`}
                   >
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
-                      {feito ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-leaf" />
-                      ) : (
-                        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      )}
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-sm font-semibold leading-snug">
-                          {item.ordem > 0 ? `${item.ordem}. ` : ""}
-                          {item.descricao}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-semibold">
+                        🎖️
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-900">{esp.nome}</h4>
+                        <p className="text-xs text-slate-500">
+                          {temRequisitos
+                            ? `${esp.concluidosCount}/${esp.totalRequisitos} requisitos`
+                            : "Sem requisitos cadastrados · Página sendo atualizada"}
                         </p>
-                        {feito && (
-                          <p className="text-xs text-muted-foreground">
-                            Concluído em {formatarData(reg!.data_realizacao)}
-                            {perfil === "chefe" && reg?.validado_por ? ` · validado por ${reg.validado_por}` : ""}
-                          </p>
-                        )}
-                        {perfil === "chefe" && (
-                          <Button
-                            size="sm"
-                            variant={feito ? "outline" : "default"}
-                            className="mt-1"
-                            disabled={!jovemId || !temPromessa || toggle.isPending}
-                            onClick={() =>
-                              toggle.mutate({ id: item.id, feito, catalogoId: aberto!.id })
-                            }
-                          >
-                            {feito ? "Desmarcar" : "Marcar"}
-                          </Button>
-                        )}
                       </div>
                     </div>
-                  </li>
+
+                    <div>
+                      {!temRequisitos ? (
+                        <span className="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-500">
+                          Em atualização
+                        </span>
+                      ) : esp.nivelAtual === 2 ? (
+                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                          Nível 2
+                        </span>
+                      ) : esp.nivelAtual === 1 ? (
+                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800">
+                          Nível 1
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+                          Não iniciado
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 );
-              })}
-            </ul>
-          )}
-        </DialogContent>
-      </Dialog>
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
