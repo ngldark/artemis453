@@ -329,16 +329,12 @@ function pickStr(r: Row, keys: string[], fallback = ""): string {
   return fallback;
 }
 
-function idFiltro(id: string): string | number {
-  return /^\d+$/.test(id) ? Number(id) : id;
-}
-
 function mapCatalogo(r: Row): CatalogoConquista {
   return {
     id: String(r.id),
     nome: pickStr(r, ["nome", "titulo", "name"], "Sem nome"),
     descricao: pickStr(r, ["descricao", "resumo", "observacao"]) || null,
-    categoria: pickStr(r, ["categoria", "area", "grupo", "ramo_conhecimento", "ramo", "eixo_id"]) || null,
+    categoria: pickStr(r, ["eixo_id", "categoria", "area", "grupo", "ramo_conhecimento", "ramo"]) || null,
     imagem: pickStr(r, ["imagem", "imagem_url", "badge", "icone", "foto", "url_imagem"]) || null,
   };
 }
@@ -347,7 +343,7 @@ function mapItem(r: Row, parentKeys: string[]): ItemConquista {
   return {
     id: String(r.id),
     catalogo_id: pickStr(r, parentKeys, String(r.catalogo_id ?? "")),
-    ordem: Number(r.ordem ?? r.numero ?? r.item ?? 0),
+    ordem: Number(r.numero_item ?? r.ordem ?? r.numero ?? r.item ?? 0),
     descricao: pickStr(r, ["descricao", "titulo", "texto", "requisito"], "Item"),
   };
 }
@@ -362,13 +358,11 @@ function mapProgressoItem(r: Row): ProgressoItemConquista {
   };
 }
 
-// CORRIGIDO: Apontando para "especialidades_catalogo"
 export async function fetchEspecialidades(): Promise<CatalogoConquista[]> {
   const rows = await selQuiet("especialidades_catalogo");
   return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
-// CORRIGIDO: Apontando para "especialidades_itens" ou tabela correspondente caso necessário
 export async function fetchEspecialidadesItens(): Promise<ItemConquista[]> {
   const rows = await selQuiet("especialidades_itens");
   return rows
@@ -381,13 +375,11 @@ export async function fetchProgressoEspecialidadesItens(jovemId?: string): Promi
   return rows.map(mapProgressoItem);
 }
 
-// CORRIGIDO: Apontando para "insignias_catalogo"
 export async function fetchInsignias(): Promise<CatalogoConquista[]> {
   const rows = await selQuiet("insignias_catalogo");
   return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
-// CORRIGIDO: Apontando para "insignias_itens"
 export async function fetchInsigniasItens(): Promise<ItemConquista[]> {
   const rows = await selQuiet("insignias_itens");
   return rows
@@ -413,7 +405,7 @@ export async function marcarEspecialidadeItem(input: {
       tabela: "progresso_especialidades_itens",
       valores: {
         escoteiro_id: input.jovemId,
-        item_id: idFiltro(input.itemId),
+        item_id: input.itemId,
         data_conclusao: input.data,
         validado_por: input.validadoPor || null,
       },
@@ -426,7 +418,7 @@ export async function desmarcarEspecialidadeItem(jovemId: string, itemId: string
     data: {
       op: "delete",
       tabela: "progresso_especialidades_itens",
-      filtros: { escoteiro_id: jovemId, item_id: idFiltro(itemId) },
+      filtros: { escoteiro_id: jovemId, item_id: itemId },
     },
   });
 }
@@ -444,7 +436,7 @@ export async function marcarInsigniaItem(input: {
       tabela: "progresso_insignias_itens",
       valores: {
         escoteiro_id: input.jovemId,
-        item_id: idFiltro(input.itemId),
+        item_id: input.itemId,
         data_conclusao: input.data,
         validado_por: input.validadoPor || null,
       },
@@ -457,7 +449,7 @@ export async function desmarcarInsigniaItem(jovemId: string, itemId: string) {
     data: {
       op: "delete",
       tabela: "progresso_insignias_itens",
-      filtros: { escoteiro_id: jovemId, item_id: idFiltro(itemId) },
+      filtros: { escoteiro_id: jovemId, item_id: itemId },
     },
   });
 }

@@ -13,10 +13,10 @@ export const TABELAS = [
   "progresso_acoes",
   "vw_status_blocos",
   "vw_progresso_blocos",
-  "especialidades",
+  "especialidades_catalogo",
   "especialidades_itens",
   "progresso_especialidades_itens",
-  "insignias",
+  "insignias_catalogo",
   "insignias_itens",
   "progresso_insignias_itens",
 ] as const;
@@ -66,9 +66,9 @@ export const extDb = createServerFn({ method: "POST" })
         "blocos",
         "acoes_catalogo",
         "acolhida_catalogo",
-        "especialidades",
+        "especialidades_catalogo",
         "especialidades_itens",
-        "insignias",
+        "insignias_catalogo",
         "insignias_itens",
       ].includes(data.tabela);
 
@@ -90,7 +90,7 @@ export const extDb = createServerFn({ method: "POST" })
       if (tabelasPessoais.includes(data.tabela)) {
         targetEscoteiroId = meuId;
         if (data.op !== "select" && data.valores) {
-          delete data.valores["validado_por"]; // Impede auto-validação / ganho de wins
+          delete data.valores["validado_por"]; // Impede auto-validação
           data.valores["escoteiro_id"] = meuId;
         }
       } else if (data.tabela === "escoteiros") {
@@ -111,7 +111,7 @@ export const extDb = createServerFn({ method: "POST" })
     }
     // ----------------------------------------------------
 
-    // --- EXECUÇÃO SEGURA DA QUERY (SEM FILTROS DINÂMICOS ARBITRÁRIOS) ---
+    // --- EXECUÇÃO SEGURA DA QUERY ---
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any;
 
@@ -129,6 +129,9 @@ export const extDb = createServerFn({ method: "POST" })
         if (data.filtros?.["id"]) q = q.eq("id", data.filtros["id"]);
         if (data.filtros?.["item_id"]) q = q.eq("item_id", data.filtros["item_id"]);
         if (data.filtros?.["acao_id"]) q = q.eq("acao_id", data.filtros["acao_id"]);
+        if (data.filtros?.["bloco_id"]) q = q.eq("bloco_id", data.filtros["bloco_id"]);
+        if (data.filtros?.["especialidade_id"]) q = q.eq("especialidade_id", data.filtros["especialidade_id"]);
+        if (data.filtros?.["insignia_id"]) q = q.eq("insignia_id", data.filtros["insignia_id"]);
       }
     } else if (data.op === "insert") {
       const payload = data.valores ?? {};
