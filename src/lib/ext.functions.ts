@@ -74,55 +74,71 @@ export const extDb = createServerFn({ method: "POST" })
 
     if (data.op !== "select" && somenteLeitura) throw new Error("Tabela somente leitura");
 
-    // --- VALIDAÇÃO RIGOROSA DE ISOLAMENTO DE DADOS PARA ESCOTEIROS ---
+    // --- BLINDAGEM COMPLETA DE SEGURANÇA E PRIVACIDADE ---
+    const tabelasPessoais = [
+      "acolhida_progresso",
+      "progresso_acoes",
+      "progresso_especialidades_itens",
+      "progresso_insignias_itens",
+    ];
+
     if (perfilUsuario !== "CHEFE") {
       if (!meuId) throw new Error("Usuário não encontrado na tropa.");
 
-      const tabelasPessoais = [
-        "acolhida_progresso",
-        "progresso_acoes",
-        "progresso_especialidades_itens",
-        "progresso_insignias_itens",
-      ];
-
       if (tabelasPessoais.includes(data.tabela)) {
-        // Verifica se o escoteiro tentou passar explicitamente o ID de outro jovem
-        const targetEscoteiroId = data.filtros?.["escoteiro_id"] ?? (data.valores as Record<string, unknown>)?.["escoteiro_id"];
-        if (targetEscoteiroId && String(targetEscoteiroId) !== String(meuId)) {
-          throw new Error("Acesso negado: você só pode acessar seus próprios registros.");
-        }
-
-        // Força obrigatoriamente o escoteiro_id para o ID do próprio usuário logado
         if (data.op === "select") {
-          data.filtros = { ...(data.filtros ?? {}), escoteiro_id: meuId };
+          data.filtros = { escoteiro_id: meuId };
         } else {
+          // Força o escoteiro_id para o próprio usuário e REMOVE validado_por para evitar auto-validação / ganho de wins
           if (data.valores) {
             data.valores["escoteiro_id"] = meuId;
+            delete data.valores["validado_por"]; 
           }
-          data.filtros = { ...(data.filtros ?? {}), escoteiro_id: meuId };
+          data.filtros = { escoteiro_id: meuId };
         }
       } else if (data.tabela === "escoteiros") {
         if (data.op === "select") {
-          // Escoteiro só pode visualizar o seu próprio cadastro
-          data.filtros = { ...(data.filtros ?? {}), id: meuId };
+          data.filtros = { id: meuId };
         } else {
           throw new Error("Acesso negado: escoteiros não podem alterar cadastros.");
         }
+      } else {
+        if (data.op !== "select") {
+          throw new Error("Acesso negado para esta operação.");
+        }
+      }
+    } else {
+      // Validação de filtros seguros para perfis de chefe
+      if (tabelasPessoais.includes(data.tabela) && data.filtros) {
+        const allowedFilterKeys = ["escoteiro_id", "item_id", "acao_id", "id"];
+        for (const key of Object.keys(data.filtros)) {
+          if (!allowedFilterKeys.includes(key)) {
+            throw new Error(`Filtro não permitido: ${key}`);
+          }
+        }
       }
     }
-    // ---------------------------------------------------------------
+    // ----------------------------------------------------
 
     const filtros = Object.entries(data.filtros ?? {});
     if ((data.op === "update" || data.op === "delete") && filtros.length === 0) throw new Error("Filtro obrigatório");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any;
-    if (data.op === "select") q = db.from(data.tabela).select("*").limit(5000);
-    else if (data.op === "insert") q = db.from(data.tabela).insert(data.valores ?? {});
-    else if (data.op === "update") q = db.from(data.tabela).update(data.valores ?? {});
-    else q = db.from(data.tabela).delete();
+    if (data.op === "select") {
+      q = db.from(data.tabela).select("*").limit(5000);
+    } else if (data.op === "insert") {
+      q = db.from(data.tabela).insert(data.valores ?? {});
+    } else if (data.op === "update") {
+      q = db.from(data.tabela).update(data.valores ?? {});
+    } else {
+      q = db.from(data.tabela).delete();
+    }
 
-    for (const [k, v] of filtros) q = q.eq(k, v);
+    for (const [k, v] of filtros) {
+      q = q.eq(k, v);
+    }
+
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return JSON.stringify(rows ?? []);
