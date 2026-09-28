@@ -13,6 +13,12 @@ export const TABELAS = [
   "progresso_acoes",
   "vw_status_blocos",
   "vw_progresso_blocos",
+  "especialidades",
+  "especialidades_itens",
+  "progresso_especialidades_itens",
+  "insignias",
+  "insignias_itens",
+  "progresso_insignias_itens",
 ] as const;
 
 const schema = z.object({
@@ -31,7 +37,18 @@ export const extDb = createServerFn({ method: "POST" })
     const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"];
     if (!url || !key) throw new Error("Banco oficial não configurado");
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const somenteLeitura = data.tabela.startsWith("vw_") || ["eixos", "blocos", "acoes_catalogo", "acolhida_catalogo"].includes(data.tabela);
+    const somenteLeitura =
+      data.tabela.startsWith("vw_") ||
+      [
+        "eixos",
+        "blocos",
+        "acoes_catalogo",
+        "acolhida_catalogo",
+        "especialidades",
+        "especialidades_itens",
+        "insignias",
+        "insignias_itens",
+      ].includes(data.tabela);
     if (data.op !== "select" && somenteLeitura) throw new Error("Tabela somente leitura");
     const filtros = Object.entries(data.filtros ?? {});
     if ((data.op === "update" || data.op === "delete") && filtros.length === 0) throw new Error("Filtro obrigatório");

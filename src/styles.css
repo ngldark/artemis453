@@ -196,6 +196,10 @@
   --leaf-foreground: #FFFFFF;
   --gold: #33b8a8;                    /* Amarelo/Dourado do Lenço */
   --gold-foreground: #1E293B;
+  --ouro: #C9A227;                    /* Nível 2 — especialidade completa */
+  --ouro-foreground: #3D2E00;
+  --prata: #8E99A4;                   /* Nível 1 — metade cumprida */
+  --prata-foreground: #1E293B;
   --radius: 0.85rem;
 }
 
@@ -204,4 +208,8 @@
   --color-leaf-foreground: var(--leaf-foreground);
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
+  --color-ouro: var(--ouro);
+  --color-ouro-foreground: var(--ouro-foreground);
+  --color-prata: var(--prata);
+  --color-prata-foreground: var(--prata-foreground);
 }

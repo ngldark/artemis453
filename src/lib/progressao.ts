@@ -72,6 +72,14 @@ type Tabela = (typeof TABELAS)[number];
 const sel = (tabela: Tabela, filtros?: Record<string, string | number>) =>
   extDb({ data: { op: "select", tabela, filtros } }).then((t) => JSON.parse(t) as Row[]);
 
+async function selQuiet(tabela: Tabela, filtros?: Record<string, string | number>) {
+  try {
+    return await sel(tabela, filtros);
+  } catch {
+    return [] as Row[];
+  }
+}
+
 const CORES = ["azul", "verde", "dourado", "azul"];
 
 type EscoteiroRow = {
@@ -286,7 +294,168 @@ export async function atualizarJovem(
 export async function removerJovem(id: string) {
   await extDb({ data: { op: "delete", tabela: "acolhida_progresso", filtros: { escoteiro_id: id } } });
   await extDb({ data: { op: "delete", tabela: "progresso_acoes", filtros: { escoteiro_id: id } } });
+  await extDb({ data: { op: "delete", tabela: "progresso_especialidades_itens", filtros: { escoteiro_id: id } } });
+  await extDb({ data: { op: "delete", tabela: "progresso_insignias_itens", filtros: { escoteiro_id: id } } });
   await extDb({ data: { op: "delete", tabela: "escoteiros", filtros: { id } } });
+}
+
+export type CatalogoConquista = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  categoria: string | null;
+  imagem: string | null;
+};
+
+export type ItemConquista = {
+  id: string;
+  catalogo_id: string;
+  ordem: number;
+  descricao: string;
+};
+
+export type ProgressoItemConquista = {
+  id: string;
+  jovem_id: string;
+  item_id: string;
+  data_realizacao: string;
+  validado_por: string | null;
+};
+
+function pickStr(r: Row, keys: string[], fallback = ""): string {
+  for (const k of keys) {
+    if (r[k] != null && String(r[k]).trim() !== "") return String(r[k]);
+  }
+  return fallback;
+}
+
+function idFiltro(id: string): string | number {
+  return /^\d+$/.test(id) ? Number(id) : id;
+}
+
+function mapCatalogo(r: Row): CatalogoConquista {
+  return {
+    id: String(r.id),
+    nome: pickStr(r, ["nome", "titulo", "name"], "Sem nome"),
+    descricao: pickStr(r, ["descricao", "resumo", "observacao"]) || null,
+    categoria: pickStr(r, ["categoria", "area", "grupo", "ramo_conhecimento", "ramo"]) || null,
+    imagem: pickStr(r, ["imagem", "imagem_url", "badge", "icone", "foto", "url_imagem"]) || null,
+  };
+}
+
+function mapItem(r: Row, parentKeys: string[]): ItemConquista {
+  return {
+    id: String(r.id),
+    catalogo_id: pickStr(r, parentKeys, String(r.catalogo_id ?? "")),
+    ordem: Number(r.ordem ?? r.numero ?? r.item ?? 0),
+    descricao: pickStr(r, ["descricao", "titulo", "texto", "requisito"], "Item"),
+  };
+}
+
+function mapProgressoItem(r: Row): ProgressoItemConquista {
+  return {
+    id: String(r.id),
+    jovem_id: String(r.escoteiro_id ?? r.jovem_id),
+    item_id: String(r.item_id ?? r.especialidade_item_id ?? r.insignia_item_id),
+    data_realizacao: String(r.data_conclusao ?? r.data_realizacao ?? r.data ?? ""),
+    validado_por: r.validado_por ?? r.validadoPor ?? null,
+  };
+}
+
+export async function fetchEspecialidades(): Promise<CatalogoConquista[]> {
+  const rows = await selQuiet("especialidades");
+  return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+export async function fetchEspecialidadesItens(): Promise<ItemConquista[]> {
+  const rows = await selQuiet("especialidades_itens");
+  return rows
+    .map((r) => mapItem(r, ["especialidade_id"]))
+    .sort((a, b) => a.catalogo_id.localeCompare(b.catalogo_id) || a.ordem - b.ordem);
+}
+
+export async function fetchProgressoEspecialidadesItens(jovemId?: string): Promise<ProgressoItemConquista[]> {
+  const rows = await selQuiet("progresso_especialidades_itens", jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map(mapProgressoItem);
+}
+
+export async function fetchInsignias(): Promise<CatalogoConquista[]> {
+  const rows = await selQuiet("insignias");
+  return rows.map(mapCatalogo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+export async function fetchInsigniasItens(): Promise<ItemConquista[]> {
+  const rows = await selQuiet("insignias_itens");
+  return rows
+    .map((r) => mapItem(r, ["insignia_id"]))
+    .sort((a, b) => a.catalogo_id.localeCompare(b.catalogo_id) || a.ordem - b.ordem);
+}
+
+export async function fetchProgressoInsigniasItens(jovemId?: string): Promise<ProgressoItemConquista[]> {
+  const rows = await selQuiet("progresso_insignias_itens", jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map(mapProgressoItem);
+}
+
+export async function marcarEspecialidadeItem(input: {
+  jovemId: string;
+  itemId: string;
+  data: string;
+  validadoPor: string;
+}) {
+  await desmarcarEspecialidadeItem(input.jovemId, input.itemId);
+  await extDb({
+    data: {
+      op: "insert",
+      tabela: "progresso_especialidades_itens",
+      valores: {
+        escoteiro_id: input.jovemId,
+        item_id: idFiltro(input.itemId),
+        data_conclusao: input.data,
+        validado_por: input.validadoPor || null,
+      },
+    },
+  });
+}
+
+export async function desmarcarEspecialidadeItem(jovemId: string, itemId: string) {
+  await extDb({
+    data: {
+      op: "delete",
+      tabela: "progresso_especialidades_itens",
+      filtros: { escoteiro_id: jovemId, item_id: idFiltro(itemId) },
+    },
+  });
+}
+
+export async function marcarInsigniaItem(input: {
+  jovemId: string;
+  itemId: string;
+  data: string;
+  validadoPor: string;
+}) {
+  await desmarcarInsigniaItem(input.jovemId, input.itemId);
+  await extDb({
+    data: {
+      op: "insert",
+      tabela: "progresso_insignias_itens",
+      valores: {
+        escoteiro_id: input.jovemId,
+        item_id: idFiltro(input.itemId),
+        data_conclusao: input.data,
+        validado_por: input.validadoPor || null,
+      },
+    },
+  });
+}
+
+export async function desmarcarInsigniaItem(jovemId: string, itemId: string) {
+  await extDb({
+    data: {
+      op: "delete",
+      tabela: "progresso_insignias_itens",
+      filtros: { escoteiro_id: jovemId, item_id: idFiltro(itemId) },
+    },
+  });
 }
 
 export const hoje = () => new Date().toISOString().slice(0, 10);
