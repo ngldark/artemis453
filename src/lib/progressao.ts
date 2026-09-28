@@ -3,6 +3,18 @@ import { extDb, TABELAS } from "./ext.functions";
 export type TabelaNome = (typeof TABELAS)[number];
 export type Perfil = "CHEFE" | "ESCOTEIRO";
 
+export interface Jovem {
+  id: string;
+  nome: string;
+  patrulha?: string | null;
+  data_nascimento?: string | null;
+  promessa_liberada?: boolean;
+  data_promessa?: string | null;
+  [key: string]: unknown;
+}
+export type Escoteiro = Jovem;
+export type Membro = Jovem;
+
 // Mapeamento visual e amigável dos Eixos
 export const MAPA_EIXOS: Record<string, { nome: string; ordem: number }> = {
   EIXO_HABILIDADES: { nome: "Habilidades para a Vida", ordem: 1 },
@@ -252,7 +264,69 @@ export async function carregarEspecialidades(escoteiroId?: string): Promise<Espe
   return resultado.sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-// --- RESTAURAÇÃO DE EXPORTAÇÕES REQUERIDAS PELAS ROTAS DA APLICAÇÃO ---
+// --- CARREGAMENTO DE INSÍGNIAS ---
+export async function carregarInsignias(escoteiroId?: string): Promise<InsigniaProgresso[]> {
+  const [catalogoRaw, itensRaw, progressoRaw] = await Promise.all([
+    selQuiet("insignias_catalogo"),
+    selQuiet("insignias_itens"),
+    selQuiet("progresso_insignias_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined),
+  ]);
+
+  const progressoSet = new Map<string, { validado_por?: string; validado_em?: string }>();
+  for (const p of progressoRaw) {
+    const itemId = String(p["item_id"] ?? "");
+    if (itemId) progressoSet.set(itemId, p);
+  }
+
+  const itensPorInsignia = new Map<string, RequisitoInsignia[]>();
+  for (const item of itensRaw) {
+    const insgIdKey = String(item["insignia_id"] ?? "").toUpperCase().trim();
+    if (!insgIdKey) continue;
+
+    const itemId = String(item["id"] ?? "");
+    const prog = progressoSet.get(itemId);
+
+    const req: RequisitoInsignia = {
+      id: itemId,
+      numeroItem: Number(item["numero_item"] ?? 0),
+      descricao: String(item["descricao"] ?? ""),
+      concluido: !!prog,
+      validadoPor: prog?.validado_por ?? null,
+      validadoEm: prog?.validado_em ?? null,
+    };
+
+    if (!itensPorInsignia.has(insgIdKey)) {
+      itensPorInsignia.set(insgIdKey, []);
+    }
+    itensPorInsignia.get(insgIdKey)!.push(req);
+  }
+
+  const resultado: InsigniaProgresso[] = [];
+
+  for (const insg of catalogoRaw) {
+    const rawInsgId = String(insg["id"] ?? "");
+    const key = rawInsgId.toUpperCase().trim();
+    const eixoId = String(insg["eixo_id"] ?? "");
+
+    const reqs = (itensPorInsignia.get(key) ?? []).sort((a, b) => a.numeroItem - b.numeroItem);
+    const concluidos = reqs.filter((r) => r.concluido).length;
+    const total = reqs.length;
+
+    resultado.push({
+      id: rawInsgId,
+      eixoId,
+      nome: String(insg["nome"] ?? rawInsgId),
+      requisitos: reqs,
+      concluidosCount: concluidos,
+      totalRequisitos: total,
+      concluida: total > 0 && concluidos >= total,
+    });
+  }
+
+  return resultado;
+}
+
+// --- RESTAURAÇÃO COMPLETA DE FUNÇÕES UTILIZADAS PELAS ROTAS ---
 
 export async function fetchMeuMembro() {
   const res = await selQuiet("jovens");
@@ -314,9 +388,66 @@ export async function marcarAcao(acaoId: string, concluida: boolean, escoteiroId
   });
 }
 
+export const toggleAcao = marcarAcao;
+export const salvarProgressoAcao = marcarAcao;
+
+export async function fetchEspecialidadesCatalogo() {
+  return selQuiet("especialidades_catalogo");
+}
+
+export async function fetchEspecialidadesItens(especialidadeId?: string) {
+  return selQuiet("especialidades_itens", especialidadeId ? { especialidade_id: especialidadeId } : undefined);
+}
+
+export async function fetchEspecialidadesProgresso(escoteiroId?: string) {
+  return selQuiet("progresso_especialidades_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+}
+
+export async function marcarEspecialidadeItem(itemId: string, concluido: boolean, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "upsert",
+      tabela: "progresso_especialidades_itens",
+      dados: { item_id: itemId, escoteiro_id: escoteiroId, concluido },
+    },
+  });
+}
+
+export const marcarItemEspecialidade = marcarEspecialidadeItem;
+export const marcarEspecialidade = marcarEspecialidadeItem;
+export const toggleItemEspecialidade = marcarEspecialidadeItem;
+
+export async function fetchInsigniasCatalogo() {
+  return selQuiet("insignias_catalogo");
+}
+
+export async function fetchInsigniasItens(insigniaId?: string) {
+  return selQuiet("insignias_itens", insigniaId ? { insignia_id: insigniaId } : undefined);
+}
+
+export async function fetchInsigniasProgresso(escoteiroId?: string) {
+  return selQuiet("progresso_insignias_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+}
+
+export async function marcarInsigniaItem(itemId: string, concluido: boolean, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "upsert",
+      tabela: "progresso_insignias_itens",
+      dados: { item_id: itemId, escoteiro_id: escoteiroId, concluido },
+    },
+  });
+}
+
+export const marcarItemInsignia = marcarInsigniaItem;
+export const marcarInsignia = marcarInsigniaItem;
+export const toggleItemInsignia = marcarInsigniaItem;
+
 export async function fetchJovens() {
   return selQuiet("jovens");
 }
+
+export const fetchEscoteiros = fetchJovens;
 
 export async function criarJovem(dados: Record<string, unknown>) {
   return extDb({ data: { op: "insert", tabela: "jovens", dados } });
@@ -328,4 +459,15 @@ export async function atualizarJovem(id: string, dados: Record<string, unknown>)
 
 export async function removerJovem(id: string) {
   return extDb({ data: { op: "delete", tabela: "jovens", filtros: { id } } });
+}
+
+export async function salvarJovem(dados: Record<string, unknown>) {
+  if (dados.id) {
+    return atualizarJovem(String(dados.id), dados);
+  }
+  return criarJovem(dados);
+}
+
+export async function marcarAcoesLote(dados: unknown) {
+  return extDb({ data: { op: "upsert", tabela: "progresso_acoes", dados } });
 }
