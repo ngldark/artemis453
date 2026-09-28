@@ -47,6 +47,7 @@ export const Route = createFileRoute("/")({
 
 function IndexPage() {
   const navigate = useNavigate();
+  // Verificação de perfil e estado global insensíveis a maiúsculas/minúsculas
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
 
   // Busca a lista de escoteiros para alimentar o Dropdown do AppShell
@@ -87,7 +88,7 @@ function IndexPage() {
 
 function Acolhida() {
   const { perfil, jovemId } = useAppState();
-  const isChefe = String(perfil).toUpperCase() === "CHEFE";
+  const isChefe = String(perfil).toLowerCase() === "chefe";
 
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
@@ -191,7 +192,7 @@ function Acolhida() {
       {isChefe && (
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="data">Data de realização</Label>
+            <Label htmlFor="data">Data de realização (Retroativa)</Label>
             <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </div>
           <div className="space-y-1.5">

@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Perfil } from "@/lib/progressao";
+import { useAppState } from "@/hooks/useAppState"; // Integrado para autonomia de estado e busca de jovens
 
 export interface EscoteiroItem {
   id: string;
@@ -38,34 +39,47 @@ export interface AppShellProps {
 
 export function AppShell({
   children,
-  perfil,
-  currentPerfil,
-  userPerfil,
+  perfil: propPerfil,
+  currentPerfil: propCurrentPerfil,
+  userPerfil: propUserPerfil,
   onPerfilChange,
   onPerfilSelect,
-  escoteiros = [],
-  jovens = [],
-  escoteiroSelecionadoId,
-  selectedEscoteiroId,
-  escoteiroAtivoId,
+  escoteiros: propEscoteiros = [],
+  jovens: propJovens = [],
+  escoteiroSelecionadoId: propEscoteiroId,
+  selectedEscoteiroId: propSelectedId,
+  escoteiroAtivoId: propAtivoId,
   onEscoteiroChange,
   onEscoteiroSelect,
 }: AppShellProps) {
   const location = useLocation();
   const currentPath = location?.pathname || "/";
 
-  const rawPerfil = perfil || currentPerfil || userPerfil || "CHEFE";
+  // Sincroniza com o estado global caso as propriedades venham vazias
+  const appState = useAppState();
+
+  const perfilGlobal = appState?.perfil || appState?.currentPerfil || "CHEFE";
+  const rawPerfil = propPerfil || propCurrentPerfil || propUserPerfil || perfilGlobal;
   const perfilUpper = String(rawPerfil).toUpperCase();
-  const isChefe = perfilUpper === "CHEFE";
+  const isChefe = perfilUpper === "chefe" || perfilUpper === "CHEFE";
 
   const handlePerfilChange = (val: string) => {
     const p = val as Perfil;
+    if (appState?.setPerfil) {
+      appState.setPerfil(p);
+    }
     onPerfilChange?.(p);
     onPerfilSelect?.(p);
   };
 
-  const listaJovensBruta = escoteiros.length > 0 ? escoteiros : jovens;
-  const jovemSelecionado = escoteiroSelecionadoId || selectedEscoteiroId || escoteiroAtivoId || "";
+  const listaJovensBruta = 
+    propEscoteiros.length > 0 ? propEscoteiros : 
+    propJovens.length > 0 ? propJovens : 
+    (appState?.jovens || appState?.escoteiros || []);
+
+  const jovemSelecionado = 
+    propEscoteiroId || propSelectedId || propAtivoId || 
+    appState?.jovemId || appState?.escoteiroId || "";
 
   // Garante a recuperação do nome independente do campo vindo do banco
   const getNomeJovem = (jovem: EscoteiroItem) => {
@@ -80,6 +94,12 @@ export function AppShell({
   });
 
   const handleJovemChange = (id: string) => {
+    if (appState?.setJovemId) {
+      appState.setJovemId(id);
+    }
+    if (appState?.setEscoteiroId) {
+      appState.setEscoteiroId(id);
+    }
     onEscoteiroChange?.(id);
     onEscoteiroSelect?.(id);
   };
@@ -160,7 +180,7 @@ export function AppShell({
                 to={item.to}
                 className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-lg text-xs font-semibold transition-colors ${
                   isActive
-                    ? "text-teal-700 font-bold bg-teal-50"
+                    = "text-teal-700 font-bold bg-teal-50"
                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                 }`}
               >

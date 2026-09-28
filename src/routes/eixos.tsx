@@ -61,6 +61,8 @@ function Eixos() {
 
   const { data: eixos = [] } = useQuery({ queryKey: ["eixos"], queryFn: fetchEixos });
   const { data: blocos = [] } = useQuery({ queryKey: ["blocos"], queryFn: fetchBlocos });
+  
+  // Consulta de status dos blocos corrigida para o jovemId selecionado
   const { data: status = [] } = useQuery({
     queryKey: ["status_blocos", jovemId],
     queryFn: () => fetchStatusBlocos(jovemId!),
@@ -68,7 +70,7 @@ function Eixos() {
   });
 
   const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
-  const promessa = promessas.find((p) => p.jovem_id === jovemId);
+  const promessa = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
 
   const statusPorBloco = useMemo(() => {
     const m = new Map<string, StatusBloco>();
@@ -103,7 +105,7 @@ function Eixos() {
         <h1 className="text-lg font-bold">Eixos, Blocos e Ações</h1>
         <p className="text-sm text-muted-foreground">
           {promessa
-            ? `Liberados desde a Promessa em ${formatarData(promessa.liberada_em)}.`
+            ? `Liberados desde a Promessa em ${formatarData(promessa.liberada_em || promessa.data_promessa)}.`
             : "Escolha um eixo para ver seus blocos."}
         </p>
       </div>
@@ -173,6 +175,7 @@ function BlocoDialog({
   onClose: () => void;
 }) {
   const { perfil, jovemId } = useAppState();
+  const isChefe = String(perfil).toLowerCase() === "chefe";
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
   const [nomeChefe, setNomeChefe] = useState("Chefia");
@@ -245,10 +248,10 @@ function BlocoDialog({
                   {feito && (
                     <p className="text-xs text-muted-foreground">
                       Concluído em {formatarData(reg!.data_realizacao)}
-                      {perfil === "chefe" && reg?.validado_por ? ` · validado por ${reg.validado_por}` : ""}
+                      {isChefe && reg?.validado_por ? ` · validado por ${reg.validado_por}` : ""}
                     </p>
                   )}
-                  {perfil === "chefe" && (
+                  {isChefe && (
                     <Button
                       size="sm"
                       variant={feito ? "outline" : "default"}
@@ -292,10 +295,10 @@ function BlocoDialog({
           </div>
         )}
 
-        {perfil === "chefe" && (
+        {isChefe && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="acao-data">Data</Label>
+              <Label htmlFor="acao-data">Data (Retroativa)</Label>
               <Input id="acao-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
             </div>
             <div className="space-y-1.5">

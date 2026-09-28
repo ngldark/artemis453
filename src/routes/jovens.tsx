@@ -96,7 +96,8 @@ function JovensPage() {
     }
   };
 
-  if (perfil !== "chefe") {
+  // Verificação de perfil padronizada e insensível a maiúsculas/minúsculas
+  if (String(perfil).toLowerCase() !== "chefe") {
     return (
       <AppShell>
         <Card className="m-6">
@@ -172,6 +173,8 @@ function JovensPage() {
                       </th>
                       <th className="p-4 font-semibold">Nome Completo</th>
                       <th className="p-4 font-semibold">Patrulha</th>
+                      <th className="p-4 font-semibold">Registro UEB</th>
+                      <th className="p-4 font-semibold">E-mail</th>
                       <th className="p-4 font-semibold text-right">Ações</th>
                     </tr>
                   </thead>
@@ -195,6 +198,8 @@ function JovensPage() {
                               {jovem.patrulha || "Sem Patrulha"}
                             </span>
                           </td>
+                          <td className="p-4 text-slate-600">{jovem.registro_ueb || "—"}</td>
+                          <td className="p-4 text-slate-600">{jovem.email || "—"}</td>
                           <td className="p-4 text-right space-x-1">
                             <Button
                               variant="ghost"

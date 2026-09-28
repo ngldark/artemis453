@@ -12,7 +12,6 @@ import {
   fetchAcoesCatalogo,
   fetchAcolhidaProgresso,
   fetchAcoesProgresso,
-
   marcarAcolhida,
   marcarAcao,
   hoje,
@@ -91,7 +90,6 @@ function Lote() {
     return jovens.filter((j) => !feitos.has(j.id));
   }, [alvo, jovens, progAcolhida, progAcoes]);
 
-
   const lancar = useMutation({
     mutationFn: async () => {
       if (!alvo || selecionados.length === 0) throw new Error("Selecione o item e ao menos um jovem.");
@@ -110,7 +108,8 @@ function Lote() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (perfil !== "chefe") {
+  // Verificação de perfil insensível a maiúsculas/minúsculas
+  if (String(perfil).toLowerCase() !== "chefe") {
     return (
       <Card className="p-5">
         <p className="font-semibold">Área exclusiva da chefia</p>
@@ -124,12 +123,11 @@ function Lote() {
   const todos = selecionados.length === pendentes.length && pendentes.length > 0;
   const jaConcluiram = jovens.length - pendentes.length;
 
-
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">Lançamento em Lote</h1>
-        <p className="text-sm text-muted-foreground">Valide um item para vários jovens de uma vez.</p>
+        <p className="text-sm text-muted-foreground">Valide um item para vários jovens de uma só vez.</p>
       </div>
 
       <Card className="gap-4 p-4">
@@ -237,7 +235,6 @@ function Lote() {
           </ul>
         )}
       </Card>
-
 
       <Button
         className="w-full bg-leaf text-leaf-foreground hover:bg-leaf/90"

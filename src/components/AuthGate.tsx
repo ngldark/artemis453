@@ -72,7 +72,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
         setMembro(m);
         setSemAcesso(!m);
         if (m) {
-          const perfilNormalizado = m.perfil?.toLowerCase();
+          // Padronização do perfil da chefia (insensível a maiúsculas/minúsculas)
+          const perfilNormalizado = String(m.perfil).toLowerCase();
           if (perfilNormalizado === "chefe") {
             setPerfil("chefe");
             setChefe(m.nome);

@@ -9,6 +9,7 @@ export interface Jovem {
   id: string;
   nome?: string | null;
   nome_completo?: string | null;
+  name?: string | null;
   patrulha?: string | null;
   data_nascimento?: string | null;
   promessa_liberada?: boolean;
@@ -619,12 +620,36 @@ export async function fetchAcoesProgresso(escoteiroId?: string) {
   return selQuiet("progresso_acoes", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
 }
 
-export async function marcarAcao(acaoId: string, concluida: boolean, escoteiroId?: string) {
+export async function marcarAcao(
+  param1: string | { acaoId?: string; acao_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluida?: boolean },
+  concluida: boolean = true,
+  escoteiroId?: string
+) {
+  if (typeof param1 === "object" && param1 !== null) {
+    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
+    const aId = param1.acaoId || param1.acao_id;
+    const isConcluida = param1.concluida ?? true;
+
+    return extDb({
+      data: {
+        op: "upsert",
+        tabela: "progresso_acoes",
+        dados: {
+          acao_id: aId,
+          escoteiro_id: jId,
+          concluida: isConcluida,
+          validado_em: param1.data ?? hoje(),
+          validado_por: param1.validadoPor,
+        },
+      },
+    });
+  }
+
   return extDb({
     data: {
       op: "upsert",
       tabela: "progresso_acoes",
-      dados: { acao_id: acaoId, escoteiro_id: escoteiroId, concluida },
+      dados: { acao_id: param1, escoteiro_id: escoteiroId, concluida },
     },
   });
 }
@@ -666,12 +691,36 @@ export async function fetchEspecialidadesProgresso(escoteiroId?: string) {
 
 export const fetchProgressoEspecialidadesItens = fetchEspecialidadesProgresso;
 
-export async function marcarEspecialidadeItem(itemId: string, concluido: boolean, escoteiroId?: string) {
+export async function marcarEspecialidadeItem(
+  param1: string | { itemId?: string; item_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluido?: boolean },
+  concluida: boolean = true,
+  escoteiroId?: string
+) {
+  if (typeof param1 === "object" && param1 !== null) {
+    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
+    const iId = param1.itemId || param1.item_id;
+    const isConcluido = param1.concluido ?? true;
+
+    return extDb({
+      data: {
+        op: "upsert",
+        tabela: "progresso_especialidades_itens",
+        dados: {
+          item_id: iId,
+          escoteiro_id: jId,
+          concluido: isConcluido,
+          validado_em: param1.data ?? hoje(),
+          validado_por: param1.validadoPor,
+        },
+      },
+    });
+  }
+
   return extDb({
     data: {
       op: "upsert",
       tabela: "progresso_especialidades_itens",
-      dados: { item_id: itemId, escoteiro_id: escoteiroId, concluido },
+      dados: { item_id: param1, escoteiro_id: escoteiroId, concluido: concluida },
     },
   });
 }
@@ -710,12 +759,36 @@ export async function fetchInsigniasProgresso(escoteiroId?: string) {
 
 export const fetchProgressoInsigniasItens = fetchInsigniasProgresso;
 
-export async function marcarInsigniaItem(itemId: string, concluido: boolean, escoteiroId?: string) {
+export async function marcarInsigniaItem(
+  param1: string | { itemId?: string; item_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluido?: boolean },
+  concluida: boolean = true,
+  escoteiroId?: string
+) {
+  if (typeof param1 === "object" && param1 !== null) {
+    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
+    const iId = param1.itemId || param1.item_id;
+    const isConcluido = param1.concluido ?? true;
+
+    return extDb({
+      data: {
+        op: "upsert",
+        tabela: "progresso_insignias_itens",
+        dados: {
+          item_id: iId,
+          escoteiro_id: jId,
+          concluido: isConcluido,
+          validado_em: param1.data ?? hoje(),
+          validado_por: param1.validadoPor,
+        },
+      },
+    });
+  }
+
   return extDb({
     data: {
       op: "upsert",
       tabela: "progresso_insignias_itens",
-      dados: { item_id: itemId, escoteiro_id: escoteiroId, concluido },
+      dados: { item_id: param1, escoteiro_id: escoteiroId, concluido: concluida },
     },
   });
 }
