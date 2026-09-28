@@ -87,6 +87,8 @@ function IndexPage() {
 
 function Acolhida() {
   const { perfil, jovemId } = useAppState();
+  const isChefe = String(perfil).toUpperCase() === "CHEFE";
+
   const qc = useQueryClient();
   const [data, setData] = useState(hoje());
   const [dataPromessa, setDataPromessa] = useState(hoje());
@@ -119,12 +121,13 @@ function Acolhida() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["acolhida_progresso"] });
     qc.invalidateQueries({ queryKey: ["promessas"] });
+    qc.invalidateQueries({ queryKey: ["escoteiros"] });
   };
 
   const toggle = useMutation({
     mutationFn: async (item: { id: string; feito: boolean }) => {
       if (!jovemId) return;
-      if (item.feito) await desmarcarAcolhida(jovemId, item.id);
+      if (item.feito) await desmarcarAcolhida(item.id, jovemId);
       else await marcarAcolhida({ jovemId, itemId: item.id, data, validadoPor: nomeChefe });
     },
     onSuccess: invalidate,
@@ -159,11 +162,16 @@ function Acolhida() {
   const total = itens.length || 7;
   const pct = Math.round((feitos / total) * 100);
   const completo = feitos >= total && total > 0;
-  const promessaLiberada = promessas.find((p) => p.jovem_id === jovemId);
+  const promessaLiberada = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
 
   useEffect(() => {
-    setDataPromessa(promessaLiberada?.liberada_em ?? hoje());
-  }, [promessaLiberada?.liberada_em, jovemId]);
+    const dataExistente = promessaLiberada?.liberada_em || promessaLiberada?.data_promessa;
+    if (dataExistente) {
+      setDataPromessa(dataExistente);
+    } else {
+      setDataPromessa(hoje());
+    }
+  }, [promessaLiberada?.liberada_em, promessaLiberada?.data_promessa, jovemId]);
 
   return (
     <div className="space-y-5">
@@ -180,7 +188,7 @@ function Acolhida() {
         <Progress value={pct} className="h-2.5" />
       </Card>
 
-      {perfil === "chefe" && (
+      {isChefe && (
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="data">Data de realização</Label>
@@ -197,7 +205,7 @@ function Acolhida() {
 
       <ul className="space-y-3">
         {itens.map((item) => {
-          const reg = progresso.find((p) => p.item_id === item.id);
+          const reg = progresso.find((p) => (p.item_id || p.item_acolhida_id) === item.id);
           const feito = !!reg;
           return (
             <li key={item.id}>
@@ -222,9 +230,9 @@ function Acolhida() {
                         <>
                           <Badge className="bg-leaf text-leaf-foreground hover:bg-leaf">✓ Concluído</Badge>
                           <span className="text-xs text-muted-foreground">
-                            em {formatarData(reg!.data_realizacao)}
+                            em {formatarData(reg?.data_realizacao || reg?.data_conclusao)}
                           </span>
-                          {perfil === "chefe" && reg?.validado_por && (
+                          {isChefe && reg?.validado_por && (
                             <span className="text-xs text-muted-foreground">
                               · validado por {reg.validado_por}
                             </span>
@@ -234,7 +242,7 @@ function Acolhida() {
                         <Badge variant="secondary">Pendente</Badge>
                       )}
                     </div>
-                    {perfil === "chefe" && (
+                    {isChefe && (
                       <div className="pt-2">
                         <Button
                           size="sm"
@@ -262,13 +270,13 @@ function Acolhida() {
         {promessaLiberada ? (
           <>
             <p className="text-sm">
-              Promessa feita em {formatarData(promessaLiberada.liberada_em)}
-              {perfil === "chefe" && promessaLiberada.liberada_por
+              Promessa feita em {formatarData(promessaLiberada.liberada_em || promessaLiberada.data_promessa)}
+              {isChefe && promessaLiberada.liberada_por
                 ? ` · registrada por ${promessaLiberada.liberada_por}`
                 : ""}
               . Os Eixos estão liberados.
             </p>
-            {perfil === "chefe" && (
+            {isChefe && (
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <div className="space-y-1.5">
                   <Label htmlFor="data-promessa-edit">Data da Promessa</Label>
@@ -305,7 +313,7 @@ function Acolhida() {
                 ? "Todos os 7 itens concluídos — informe a data da Promessa para liberar os Eixos."
                 : `Faltam ${total - feitos} item(ns) para registrar a Promessa.`}
             </p>
-            {perfil === "chefe" && (
+            {isChefe && (
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <div className="space-y-1.5">
                   <Label htmlFor="data-promessa">Data da Promessa</Label>

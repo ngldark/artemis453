@@ -1,13 +1,14 @@
 import { extDb, TABELAS } from "./ext.functions";
 
 export type TabelaNome = (typeof TABELAS)[number];
-export type Perfil = "escoteiro" | "chefe";
+export type Perfil = "escoteiro" | "chefe" | "ESCOTEIRO" | "CHEFE";
 export type TipoAcao = "FIXA" | "VARIAVEL" | "fixa" | "variavel";
 
 // --- TIPOS DE ENTIDADES OFICIAIS ---
 export interface Jovem {
   id: string;
-  nome: string;
+  nome?: string | null;
+  nome_completo?: string | null;
   patrulha?: string | null;
   data_nascimento?: string | null;
   promessa_liberada?: boolean;
@@ -21,7 +22,8 @@ export type Escoteiro = Jovem;
 
 export interface Membro {
   id: string;
-  nome: string;
+  nome?: string | null;
+  nome_completo?: string | null;
   patrulha?: string | null;
   perfil?: Perfil | string;
   email?: string | null;
@@ -41,9 +43,13 @@ export interface ItemAcolhida {
 export interface AcolhidaProgresso {
   id?: string;
   escoteiro_id: string;
+  jovem_id?: string;
   item_acolhida_id: string;
+  item_id?: string;
   concluida: boolean;
   data_conclusao?: string;
+  data_realizacao?: string;
+  validado_por?: string;
   [key: string]: unknown;
 }
 
@@ -82,7 +88,11 @@ export interface StatusBloco {
 export interface Promessa {
   id: string;
   escoteiro_id?: string;
+  jovem_id?: string;
   data_promessa?: string;
+  liberada_em?: string;
+  liberada_por?: string;
+  promessa_liberada?: boolean;
   [key: string]: unknown;
 }
 
@@ -446,18 +456,39 @@ export async function salvarJovem(dados: Record<string, unknown>) {
   return criarJovem(dados);
 }
 
-export async function fetchPromessas() {
+// Busca as promessas filtrando quem tem data_promessa preenchida ou promessa_liberada == true
+export async function fetchPromessas(): Promise<Promessa[]> {
   const todos = await selQuiet<Jovem>("escoteiros");
-  return todos.filter((j) => j.promessa_liberada);
+  return todos
+    .filter((j) => Boolean(j.data_promessa) || Boolean(j.promessa_liberada))
+    .map((j) => ({
+      id: j.id,
+      escoteiro_id: j.id,
+      jovem_id: j.id,
+      data_promessa: j.data_promessa ?? undefined,
+      liberada_em: j.data_promessa ?? undefined,
+      promessa_liberada: true,
+    }));
 }
 
-export async function liberarPromessa(escoteiroId: string, dataPromessa?: string) {
+// Aceita tanto (escoteiroId, dataPromessa) quanto (escoteiroId, liberadaPor, dataPromessa)
+export async function liberarPromessa(escoteiroId: string, arg2?: string, arg3?: string) {
+  let dataPromessa = hoje();
+  if (arg3) {
+    dataPromessa = arg3;
+  } else if (arg2) {
+    dataPromessa = arg2;
+  }
+
   return extDb({
     data: {
       op: "update",
       tabela: "escoteiros",
       filtros: { id: escoteiroId },
-      dados: { promessa_liberada: true, data_promessa: dataPromessa ?? new Date().toISOString() },
+      dados: {
+        promessa_liberada: true,
+        data_promessa: dataPromessa,
+      },
     },
   });
 }
@@ -468,7 +499,10 @@ export async function removerPromessa(escoteiroId: string) {
       op: "update",
       tabela: "escoteiros",
       filtros: { id: escoteiroId },
-      dados: { promessa_liberada: false, data_promessa: null },
+      dados: {
+        promessa_liberada: false,
+        data_promessa: null,
+      },
     },
   });
 }
@@ -479,16 +513,61 @@ export async function fetchAcolhidaCatalogo() {
   return selQuiet("acolhida_catalogo");
 }
 
-export async function fetchAcolhidaProgresso(escoteiroId?: string) {
-  return selQuiet("acolhida_progresso", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+export async function fetchAcolhidaProgresso(escoteiroId?: string): Promise<AcolhidaProgresso[]> {
+  const res = await selQuiet<Record<string, unknown>>(
+    "acolhida_progresso",
+    escoteiroId ? { escoteiro_id: escoteiroId } : undefined
+  );
+
+  return res.map((item) => ({
+    ...item,
+    escoteiro_id: String(item["escoteiro_id"] ?? escoteiroId ?? ""),
+    jovem_id: String(item["escoteiro_id"] ?? escoteiroId ?? ""),
+    item_acolhida_id: String(item["item_acolhida_id"] ?? item["item_id"] ?? ""),
+    item_id: String(item["item_acolhida_id"] ?? item["item_id"] ?? ""),
+    concluida: Boolean(item["concluida"] ?? true),
+    data_conclusao: String(item["data_conclusao"] ?? item["data_realizacao"] ?? ""),
+    data_realizacao: String(item["data_realizacao"] ?? item["data_conclusao"] ?? ""),
+    validado_por: item["validado_por"] ? String(item["validado_por"]) : undefined,
+  }));
 }
 
-export async function marcarAcolhida(itemAcolhidaId: string, concluida: boolean, escoteiroId?: string) {
+// Aceita chamadas por parâmetros diretos ou por objeto
+export async function marcarAcolhida(
+  param1: string | { jovemId?: string; escoteiroId?: string; escoteiro_id?: string; itemId?: string; item_acolhida_id?: string; data?: string; validadoPor?: string; concluida?: boolean },
+  concluida: boolean = true,
+  escoteiroId?: string
+) {
+  if (typeof param1 === "object" && param1 !== null) {
+    const jId = param1.jovemId || param1.escoteiroId || param1.escoteiro_id || escoteiroId;
+    const itemId = param1.itemId || param1.item_acolhida_id;
+    const isConcluida = param1.concluida ?? true;
+
+    return extDb({
+      data: {
+        op: "upsert",
+        tabela: "acolhida_progresso",
+        dados: {
+          item_acolhida_id: itemId,
+          escoteiro_id: jId,
+          concluida: isConcluida,
+          data_conclusao: param1.data ?? hoje(),
+          validado_por: param1.validadoPor,
+        },
+      },
+    });
+  }
+
   return extDb({
     data: {
       op: "upsert",
       tabela: "acolhida_progresso",
-      dados: { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId, concluida },
+      dados: {
+        item_acolhida_id: param1,
+        escoteiro_id: escoteiroId,
+        concluida,
+        data_conclusao: hoje(),
+      },
     },
   });
 }
