@@ -1,8 +1,10 @@
 import { extDb, TABELAS } from "./ext.functions";
 
 export type TabelaNome = (typeof TABELAS)[number];
-export type Perfil = "CHEFE" | "ESCOTEIRO";
+export type Perfil = "escoteiro" | "chefe";
+export type TipoAcao = "FIXA" | "VARIAVEL" | "fixa" | "variavel";
 
+// --- TIPOS DE ENTIDADES OFICIAIS ---
 export interface Jovem {
   id: string;
   nome: string;
@@ -10,10 +12,79 @@ export interface Jovem {
   data_nascimento?: string | null;
   promessa_liberada?: boolean;
   data_promessa?: string | null;
+  email?: string | null;
+  perfil?: Perfil | string;
   [key: string]: unknown;
 }
+
 export type Escoteiro = Jovem;
-export type Membro = Jovem;
+
+export interface Membro {
+  id: string;
+  nome: string;
+  patrulha?: string | null;
+  perfil?: Perfil | string;
+  email?: string | null;
+  promessa_liberada?: boolean;
+  data_promessa?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ItemAcolhida {
+  id: string;
+  titulo?: string;
+  descricao?: string;
+  ordem?: number;
+  [key: string]: unknown;
+}
+
+export interface AcolhidaProgresso {
+  id?: string;
+  escoteiro_id: string;
+  item_acolhida_id: string;
+  concluida: boolean;
+  data_conclusao?: string;
+  [key: string]: unknown;
+}
+
+export interface Eixo {
+  id: string;
+  nome: string;
+  ordem?: number;
+  [key: string]: unknown;
+}
+
+export interface Bloco {
+  id: string;
+  eixo_id: string;
+  nome: string;
+  ordem?: number;
+  [key: string]: unknown;
+}
+
+export interface AcaoCatalogo {
+  id: string;
+  bloco_id: string;
+  codigo?: string;
+  descricao?: string;
+  tipo?: TipoAcao;
+  ordem?: number;
+  [key: string]: unknown;
+}
+
+export interface StatusBloco {
+  id?: string;
+  bloco_id: string;
+  escoteiro_id: string;
+  [key: string]: unknown;
+}
+
+export interface Promessa {
+  id: string;
+  escoteiro_id?: string;
+  data_promessa?: string;
+  [key: string]: unknown;
+}
 
 // Mapeamento visual e amigável dos Eixos
 export const MAPA_EIXOS: Record<string, { nome: string; ordem: number }> = {
@@ -23,12 +94,13 @@ export const MAPA_EIXOS: Record<string, { nome: string; ordem: number }> = {
   EIXO_SAUDE: { nome: "Saúde e Bem-estar", ordem: 4 },
 };
 
+// Utilidade interna para consultas flexíveis
 async function selQuiet<T = Record<string, unknown>>(
-  tabela: TabelaNome,
-  filtros?: Record<string, string | number>
+  tabela: TabelaNome | string,
+  filtros?: Record<string, string | number | boolean>
 ): Promise<T[]> {
   try {
-    const raw = await extDb({ data: { op: "select", tabela, filtros } });
+    const raw = await extDb({ data: { op: "select", tabela: tabela as TabelaNome, filtros } });
     return JSON.parse(raw) as T[];
   } catch (err) {
     console.error(`Erro ao buscar tabela ${tabela}:`, err);
@@ -36,7 +108,23 @@ async function selQuiet<T = Record<string, unknown>>(
   }
 }
 
-// --- TIPOS DE PROGRESSÃO ---
+// --- UTILITÁRIOS DE DATA ---
+export function formatarData(data?: string | Date | null): string {
+  if (!data) return "";
+  try {
+    const d = typeof data === "string" ? new Date(data) : data;
+    if (isNaN(d.getTime())) return String(data);
+    return d.toLocaleDateString("pt-BR");
+  } catch {
+    return String(data);
+  }
+}
+
+export function hoje(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+// --- TIPOS DE PROGRESSÃO PAINEL ---
 export interface AcaoProgresso {
   id: string;
   codigo: string;
@@ -326,41 +414,98 @@ export async function carregarInsignias(escoteiroId?: string): Promise<InsigniaP
   return resultado;
 }
 
-// --- RESTAURAÇÃO COMPLETA DE FUNÇÕES UTILIZADAS PELAS ROTAS ---
+// --- CONSULTA E GERENCIAMENTO DE MEMBROS E PROMESSA ---
 
-export async function fetchMeuMembro() {
-  const res = await selQuiet("jovens");
+export async function fetchMeuMembro(): Promise<Membro | null> {
+  const res = await selQuiet<Membro>("escoteiros");
   return res[0] ?? null;
 }
 
-export async function fetchAcolhidaCatalogo() {
-  return selQuiet("acolhida_catalogo");
+export async function fetchJovens(): Promise<Jovem[]> {
+  return selQuiet<Jovem>("escoteiros");
 }
 
-export async function fetchAcolhidaProgresso(escoteiroId?: string) {
-  return selQuiet("progresso_acolhida", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+export const fetchEscoteiros = fetchJovens;
+
+export async function criarJovem(dados: Record<string, unknown>) {
+  return extDb({ data: { op: "insert", tabela: "escoteiros", dados } });
 }
 
-export async function marcarAcolhida(itemAcolhidaId: string, concluida: boolean, escoteiroId?: string) {
-  return extDb({
-    data: {
-      op: "upsert",
-      tabela: "progresso_acolhida",
-      dados: { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId, concluida },
-    },
-  });
+export async function atualizarJovem(id: string, dados: Record<string, unknown>) {
+  return extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, dados } });
+}
+
+export async function removerJovem(id: string) {
+  return extDb({ data: { op: "delete", tabela: "escoteiros", filtros: { id } } });
+}
+
+export async function salvarJovem(dados: Record<string, unknown>) {
+  if (dados.id) {
+    return atualizarJovem(String(dados.id), dados);
+  }
+  return criarJovem(dados);
+}
+
+export async function fetchPromessas() {
+  const todos = await selQuiet<Jovem>("escoteiros");
+  return todos.filter((j) => j.promessa_liberada);
 }
 
 export async function liberarPromessa(escoteiroId: string, dataPromessa?: string) {
   return extDb({
     data: {
       op: "update",
-      tabela: "jovens",
+      tabela: "escoteiros",
       filtros: { id: escoteiroId },
       dados: { promessa_liberada: true, data_promessa: dataPromessa ?? new Date().toISOString() },
     },
   });
 }
+
+export async function removerPromessa(escoteiroId: string) {
+  return extDb({
+    data: {
+      op: "update",
+      tabela: "escoteiros",
+      filtros: { id: escoteiroId },
+      dados: { promessa_liberada: false, data_promessa: null },
+    },
+  });
+}
+
+// --- CONSULTA E GERENCIAMENTO DE ACOLHIDA ---
+
+export async function fetchAcolhidaCatalogo() {
+  return selQuiet("acolhida_catalogo");
+}
+
+export async function fetchAcolhidaProgresso(escoteiroId?: string) {
+  return selQuiet("acolhida_progresso", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+}
+
+export async function marcarAcolhida(itemAcolhidaId: string, concluida: boolean, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "upsert",
+      tabela: "acolhida_progresso",
+      dados: { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId, concluida },
+    },
+  });
+}
+
+export async function desmarcarAcolhida(itemAcolhidaId: string, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "delete",
+      tabela: "acolhida_progresso",
+      filtros: escoteiroId
+        ? { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId }
+        : { item_acolhida_id: itemAcolhidaId },
+    },
+  });
+}
+
+// --- CONSULTA E GERENCIAMENTO DE EIXOS, BLOCOS E AÇÕES ---
 
 export async function fetchEixos() {
   return selQuiet("eixos");
@@ -378,6 +523,10 @@ export async function fetchStatusBlocos(escoteiroId?: string) {
   return carregarEixosEBlocos(escoteiroId);
 }
 
+export async function fetchAcoesProgresso(escoteiroId?: string) {
+  return selQuiet("progresso_acoes", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
+}
+
 export async function marcarAcao(acaoId: string, concluida: boolean, escoteiroId?: string) {
   return extDb({
     data: {
@@ -388,12 +537,32 @@ export async function marcarAcao(acaoId: string, concluida: boolean, escoteiroId
   });
 }
 
+export async function desmarcarAcao(acaoId: string, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "delete",
+      tabela: "progresso_acoes",
+      filtros: escoteiroId
+        ? { acao_id: acaoId, escoteiro_id: escoteiroId }
+        : { acao_id: acaoId },
+    },
+  });
+}
+
 export const toggleAcao = marcarAcao;
 export const salvarProgressoAcao = marcarAcao;
+
+export async function marcarAcoesLote(dados: unknown) {
+  return extDb({ data: { op: "upsert", tabela: "progresso_acoes", dados } });
+}
+
+// --- CONSULTA E GERENCIAMENTO DE ESPECIALIDADES ---
 
 export async function fetchEspecialidadesCatalogo() {
   return selQuiet("especialidades_catalogo");
 }
+
+export const fetchEspecialidades = fetchEspecialidadesCatalogo;
 
 export async function fetchEspecialidadesItens(especialidadeId?: string) {
   return selQuiet("especialidades_itens", especialidadeId ? { especialidade_id: especialidadeId } : undefined);
@@ -402,6 +571,8 @@ export async function fetchEspecialidadesItens(especialidadeId?: string) {
 export async function fetchEspecialidadesProgresso(escoteiroId?: string) {
   return selQuiet("progresso_especialidades_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
 }
+
+export const fetchProgressoEspecialidadesItens = fetchEspecialidadesProgresso;
 
 export async function marcarEspecialidadeItem(itemId: string, concluido: boolean, escoteiroId?: string) {
   return extDb({
@@ -413,13 +584,29 @@ export async function marcarEspecialidadeItem(itemId: string, concluido: boolean
   });
 }
 
+export async function desmarcarEspecialidadeItem(itemId: string, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "delete",
+      tabela: "progresso_especialidades_itens",
+      filtros: escoteiroId
+        ? { item_id: itemId, escoteiro_id: escoteiroId }
+        : { item_id: itemId },
+    },
+  });
+}
+
 export const marcarItemEspecialidade = marcarEspecialidadeItem;
 export const marcarEspecialidade = marcarEspecialidadeItem;
 export const toggleItemEspecialidade = marcarEspecialidadeItem;
 
+// --- CONSULTA E GERENCIAMENTO DE INSÍGNIAS ---
+
 export async function fetchInsigniasCatalogo() {
   return selQuiet("insignias_catalogo");
 }
+
+export const fetchInsignias = fetchInsigniasCatalogo;
 
 export async function fetchInsigniasItens(insigniaId?: string) {
   return selQuiet("insignias_itens", insigniaId ? { insignia_id: insigniaId } : undefined);
@@ -428,6 +615,8 @@ export async function fetchInsigniasItens(insigniaId?: string) {
 export async function fetchInsigniasProgresso(escoteiroId?: string) {
   return selQuiet("progresso_insignias_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
 }
+
+export const fetchProgressoInsigniasItens = fetchInsigniasProgresso;
 
 export async function marcarInsigniaItem(itemId: string, concluido: boolean, escoteiroId?: string) {
   return extDb({
@@ -439,35 +628,18 @@ export async function marcarInsigniaItem(itemId: string, concluido: boolean, esc
   });
 }
 
+export async function desmarcarInsigniaItem(itemId: string, escoteiroId?: string) {
+  return extDb({
+    data: {
+      op: "delete",
+      tabela: "progresso_insignias_itens",
+      filtros: escoteiroId
+        ? { item_id: itemId, escoteiro_id: escoteiroId }
+        : { item_id: itemId },
+    },
+  });
+}
+
 export const marcarItemInsignia = marcarInsigniaItem;
 export const marcarInsignia = marcarInsigniaItem;
 export const toggleItemInsignia = marcarInsigniaItem;
-
-export async function fetchJovens() {
-  return selQuiet("jovens");
-}
-
-export const fetchEscoteiros = fetchJovens;
-
-export async function criarJovem(dados: Record<string, unknown>) {
-  return extDb({ data: { op: "insert", tabela: "jovens", dados } });
-}
-
-export async function atualizarJovem(id: string, dados: Record<string, unknown>) {
-  return extDb({ data: { op: "update", tabela: "jovens", filtros: { id }, dados } });
-}
-
-export async function removerJovem(id: string) {
-  return extDb({ data: { op: "delete", tabela: "jovens", filtros: { id } } });
-}
-
-export async function salvarJovem(dados: Record<string, unknown>) {
-  if (dados.id) {
-    return atualizarJovem(String(dados.id), dados);
-  }
-  return criarJovem(dados);
-}
-
-export async function marcarAcoesLote(dados: unknown) {
-  return extDb({ data: { op: "upsert", tabela: "progresso_acoes", dados } });
-}
