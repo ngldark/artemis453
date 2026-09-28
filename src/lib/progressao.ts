@@ -433,7 +433,6 @@ export async function fetchMeuMembro(): Promise<Membro | null> {
 
 export async function fetchJovens(): Promise<Jovem[]> {
   const lista = await selQuiet<Jovem>("escoteiros");
-  // Ordena alfabeticamente por nome
   return lista.sort((a, b) => {
     const nomeA = a.nome || a.nome_completo || a.name || "";
     const nomeB = b.nome || b.nome_completo || b.name || "";
@@ -462,7 +461,6 @@ export async function salvarJovem(dados: Record<string, unknown>) {
   return criarJovem(dados);
 }
 
-// Busca as promessas filtrando quem tem data_promessa preenchida ou promessa_liberada == true
 export async function fetchPromessas(): Promise<Promessa[]> {
   const todos = await selQuiet<Jovem>("escoteiros");
   return todos
@@ -477,7 +475,6 @@ export async function fetchPromessas(): Promise<Promessa[]> {
     }));
 }
 
-// Aceita tanto (escoteiroId, dataPromessa) quanto (escoteiroId, liberadaPor, dataPromessa)
 export async function liberarPromessa(escoteiroId: string, arg2?: string, arg3?: string) {
   let dataPromessa = hoje();
   if (arg3) {
@@ -549,7 +546,6 @@ export async function fetchAcolhidaProgresso(escoteiroId?: string): Promise<Acol
   }));
 }
 
-// Aceita chamadas por parâmetros diretos ou por objeto
 export async function marcarAcolhida(
   param1: string | { jovemId?: string; escoteiroId?: string; escoteiro_id?: string; itemId?: string; item_acolhida_id?: string; data?: string; validadoPor?: string; concluida?: boolean },
   concluida: boolean = true,
