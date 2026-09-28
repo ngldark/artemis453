@@ -31,12 +31,34 @@ const schema = z.object({
 export const extDb = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => schema.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const url = process.env["EXT_SUPABASE_URL"];
     const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"];
     if (!url || !key) throw new Error("Banco oficial não configurado");
+
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+    // Identifica o usuário atual pelo e-mail do token para validação de segurança
+    const email = String((context.claims as Record<string, unknown>)["email"] ?? "")
+      .trim()
+      .toLowerCase();
+
+    let perfilUsuario = "ESCOTEIRO";
+    let meuId: string | null = null;
+
+    if (email) {
+      const { data: membroData } = await db
+        .from("escoteiros")
+        .select("id, perfil")
+        .ilike("email", email)
+        .limit(1);
+      if (membroData?.[0]) {
+        perfilUsuario = String(membroData[0].perfil ?? "ESCOTEIRO").toUpperCase();
+        meuId = membroData[0].id;
+      }
+    }
+
     const somenteLeitura =
       data.tabela.startsWith("vw_") ||
       [
@@ -49,7 +71,47 @@ export const extDb = createServerFn({ method: "POST" })
         "insignias",
         "insignias_itens",
       ].includes(data.tabela);
+
     if (data.op !== "select" && somenteLeitura) throw new Error("Tabela somente leitura");
+
+    // --- VALIDAÇÃO RIGOROSA DE ISOLAMENTO DE DADOS PARA ESCOTEIROS ---
+    if (perfilUsuario !== "CHEFE") {
+      if (!meuId) throw new Error("Usuário não encontrado na tropa.");
+
+      const tabelasPessoais = [
+        "acolhida_progresso",
+        "progresso_acoes",
+        "progresso_especialidades_itens",
+        "progresso_insignias_itens",
+      ];
+
+      if (tabelasPessoais.includes(data.tabela)) {
+        // Verifica se o escoteiro tentou passar explicitamente o ID de outro jovem
+        const targetEscoteiroId = data.filtros?.["escoteiro_id"] ?? (data.valores as Record<string, unknown>)?.["escoteiro_id"];
+        if (targetEscoteiroId && String(targetEscoteiroId) !== String(meuId)) {
+          throw new Error("Acesso negado: você só pode acessar seus próprios registros.");
+        }
+
+        // Força obrigatoriamente o escoteiro_id para o ID do próprio usuário logado
+        if (data.op === "select") {
+          data.filtros = { ...(data.filtros ?? {}), escoteiro_id: meuId };
+        } else {
+          if (data.valores) {
+            data.valores["escoteiro_id"] = meuId;
+          }
+          data.filtros = { ...(data.filtros ?? {}), escoteiro_id: meuId };
+        }
+      } else if (data.tabela === "escoteiros") {
+        if (data.op === "select") {
+          // Escoteiro só pode visualizar o seu próprio cadastro
+          data.filtros = { ...(data.filtros ?? {}), id: meuId };
+        } else {
+          throw new Error("Acesso negado: escoteiros não podem alterar cadastros.");
+        }
+      }
+    }
+    // ---------------------------------------------------------------
+
     const filtros = Object.entries(data.filtros ?? {});
     if ((data.op === "update" || data.op === "delete") && filtros.length === 0) throw new Error("Filtro obrigatório");
 
@@ -59,6 +121,7 @@ export const extDb = createServerFn({ method: "POST" })
     else if (data.op === "insert") q = db.from(data.tabela).insert(data.valores ?? {});
     else if (data.op === "update") q = db.from(data.tabela).update(data.valores ?? {});
     else q = db.from(data.tabela).delete();
+
     for (const [k, v] of filtros) q = q.eq(k, v);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
