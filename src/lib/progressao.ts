@@ -1,16 +1,21 @@
-import { extDb, meuMembro, TABELAS } from "./ext.functions";
+import { supabase } from "./supabase";
 import type { Membro } from "./membro";
 
-// Re-exporta o Membro para que componentes como o AuthGate possam importá-lo daqui
 export type { Membro };
 
 export async function fetchMeuMembro(): Promise<Membro | null> {
-  const txt = await meuMembro();
-  return JSON.parse(txt) as Membro | null;
-}
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  
+  const { data, error } = await supabase
+    .from("escoteiros")
+    .select("*")
+    .eq("email", user.email)
+    .single();
 
-// Todos os dados vêm do banco oficial da tropa (projeto externo),
-// acessado por funções no servidor.
+  if (error || !data) return null;
+  return data as Membro;
+}
 
 export type Perfil = "escoteiro" | "chefe";
 
@@ -69,7 +74,6 @@ export type StatusBloco = {
   bloco_concluido: boolean;
 };
 
-// Tipos para os Estágios de Progressão
 export type EstagioNome = "PISTAS" | "TRILHA" | "RUMO" | "TRAVESSIA";
 
 export type EscoteiroEstagio = {
@@ -80,7 +84,6 @@ export type EscoteiroEstagio = {
   registrado_por: string | null;
 };
 
-// Tipo exportado para a rota de especialidades
 export type EspecialidadeProgresso = {
   id: string;
   nome: string;
@@ -90,13 +93,6 @@ export type EspecialidadeProgresso = {
   [key: string]: any;
 };
 
-type Row = any; // eslint-disable-line @typescript-eslint/no-explicit-any
-type Tabela = (typeof TABELAS)[number];
-
-const sel = (tabela: Tabela, filtros?: Record<string, string | number>) =>
-  extDb({ data: { op: "select", tabela, filtros } }).then((t) => JSON.parse(t) as Row[]);
-
-// Mapeamento oficial de cores e ordem com base nos eixos reais da base de dados
 const CORES_EIXOS: Record<string, string> = {
   EIXO_HABILIDADES: "azul",
   EIXO_MEIO_AMBIENTE: "verde",
@@ -122,7 +118,9 @@ type EscoteiroRow = {
 };
 
 export async function fetchEscoteiros() {
-  return (await sel("escoteiros")) as EscoteiroRow[];
+  const { data, error } = await supabase.from("escoteiros").select("*");
+  if (error) throw error;
+  return (data || []) as EscoteiroRow[];
 }
 
 export async function fetchJovens(): Promise<Jovem[]> {
@@ -141,15 +139,19 @@ export async function fetchJovens(): Promise<Jovem[]> {
 }
 
 export async function fetchAcolhidaCatalogo(): Promise<ItemAcolhida[]> {
-  const rows = await sel("acolhida_catalogo");
-  return rows
-    .map((r) => ({ id: String(r.id), ordem: Number(r.id), titulo: r.descricao as string, descricao: null }))
+  const { data, error } = await supabase.from("acolhida_catalogo").select("*");
+  if (error) throw error;
+  return (data || [])
+    .map((r: any) => ({ id: String(r.id), ordem: Number(r.id), titulo: r.descricao as string, descricao: null }))
     .sort((a, b) => a.ordem - b.ordem);
 }
 
 export async function fetchAcolhidaProgresso(jovemId?: string): Promise<AcolhidaProgresso[]> {
-  const rows = await sel("acolhida_progresso", jovemId ? { escoteiro_id: jovemId } : undefined);
-  return rows.map((r) => ({
+  let query = supabase.from("acolhida_progresso").select("*");
+  if (jovemId) query = query.eq("escoteiro_id", jovemId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map((r: any) => ({
     id: r.id ?? "",
     jovem_id: r.escoteiro_id,
     item_id: String(r.item_id),
@@ -159,15 +161,16 @@ export async function fetchAcolhidaProgresso(jovemId?: string): Promise<Acolhida
 }
 
 export async function fetchEixos(): Promise<Eixo[]> {
-  const rows = await sel("eixos");
-  return rows
-    .sort((a, b) => {
+  const { data, error } = await supabase.from("eixos").select("*");
+  if (error) throw error;
+  return (data || [])
+    .sort((a: any, b: any) => {
       const ia = ORDEM_EIXOS_OFICIAL.indexOf(a.id);
       const ib = ORDEM_EIXOS_OFICIAL.indexOf(b.id);
       if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       return String(a.nome).localeCompare(String(b.nome), "pt-BR");
     })
-    .map((r, i) => ({
+    .map((r: any, i: number) => ({
       id: r.id ?? "",
       nome: r.nome,
       cor: CORES_EIXOS[r.id] ?? "azul",
@@ -176,10 +179,11 @@ export async function fetchEixos(): Promise<Eixo[]> {
 }
 
 export async function fetchBlocos(): Promise<Bloco[]> {
-  const rows = await sel("blocos");
-  return rows
-    .sort((a, b) => String(a.id).localeCompare(String(b.id), "pt-BR", { numeric: true }))
-    .map((r, i) => ({
+  const { data, error } = await supabase.from("blocos").select("*");
+  if (error) throw error;
+  return (data || [])
+    .sort((a: any, b: any) => String(a.id).localeCompare(String(b.id), "pt-BR", { numeric: true }))
+    .map((r: any, i: number) => ({
       id: r.id ?? "",
       eixo_id: r.eixo_id,
       nome: r.nome,
@@ -190,9 +194,13 @@ export async function fetchBlocos(): Promise<Bloco[]> {
 }
 
 export async function fetchAcoesCatalogo(blocoId?: string): Promise<AcaoCatalogo[]> {
-  const rows = await sel("acoes_catalogo", blocoId ? { bloco_id: blocoId } : undefined);
+  let query = supabase.from("acoes_catalogo").select("*");
+  if (blocoId) query = query.eq("bloco_id", blocoId);
+  const { data, error } = await query;
+  if (error) throw error;
+  
   const ordemTipo: Record<string, number> = { FIXA: 0, VARIAVEL: 1, OU: 2 };
-  return (rows as AcaoCatalogo[]).sort(
+  return (data as AcaoCatalogo[]).sort(
     (a, b) =>
       a.bloco_id.localeCompare(b.bloco_id, "pt-BR", { numeric: true }) ||
       (ordemTipo[a.tipo] ?? 9) - (ordemTipo[b.tipo] ?? 9) ||
@@ -201,10 +209,18 @@ export async function fetchAcoesCatalogo(blocoId?: string): Promise<AcaoCatalogo
 }
 
 export async function fetchStatusBlocos(jovemId?: string): Promise<StatusBloco[]> {
-  const f = jovemId ? { escoteiro_id: jovemId } : undefined;
-  const [status, prog] = await Promise.all([sel("vw_status_blocos", f), sel("vw_progresso_blocos", f)]);
-  const extra = new Map(prog.map((p) => [`${p.escoteiro_id}|${p.bloco_id}`, p]));
-  return status.map((s) => {
+  let qStatus = supabase.from("vw_status_blocos").select("*");
+  let qProg = supabase.from("vw_progresso_blocos").select("*");
+  
+  if (jovemId) {
+    qStatus = qStatus.eq("escoteiro_id", jovemId);
+    qProg = qProg.eq("escoteiro_id", jovemId);
+  }
+
+  const [{ data: status }, { data: prog }] = await Promise.all([qStatus, qProg]);
+  
+  const extra = new Map((prog || []).map((p: any) => [`${p.escoteiro_id}|${p.bloco_id}`, p]));
+  return (status || []).map((s: any) => {
     const p = extra.get(`${s.escoteiro_id}|${s.bloco_id}`);
     return {
       escoteiro_id: s.escoteiro_id,
@@ -221,8 +237,12 @@ export async function fetchStatusBlocos(jovemId?: string): Promise<StatusBloco[]
 }
 
 export async function fetchAcoesProgresso(jovemId?: string): Promise<AcaoProgresso[]> {
-  const rows = await sel("progresso_acoes", jovemId ? { escoteiro_id: jovemId } : undefined);
-  return rows.map((r) => ({
+  let query = supabase.from("progresso_acoes").select("*");
+  if (jovemId) query = query.eq("escoteiro_id", jovemId);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((r: any) => ({
     id: r.id ?? "",
     jovem_id: r.escoteiro_id,
     acao_id: r.acao_id,
@@ -238,10 +258,13 @@ export async function fetchPromessas(): Promise<Promessa[]> {
     .map((r) => ({ id: r.id ?? "", jovem_id: r.id ?? "", liberada_em: r.data_promessa as string, liberada_por: null }));
 }
 
-// Funções de Estágios de Progressão (Pistas, Trilha, Rumo, Travessia)
 export async function fetchEstagiosProgresso(jovemId?: string): Promise<EscoteiroEstagio[]> {
-  const rows = await sel("escoteiros_estagios" as any, jovemId ? { escoteiro_id: jovemId } : undefined);
-  return rows.map((r: any) => ({
+  let query = supabase.from("escoteiros_estagios").select("*");
+  if (jovemId) query = query.eq("escoteiro_id", jovemId);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((r: any) => ({
     id: r['id'] ?? "",
     escoteiro_id: r['escoteiro_id'] ?? "",
     estagio: r['estagio'],
@@ -256,23 +279,20 @@ export async function registrarEstagio(input: {
   data: string | null;
   registradoPor?: string;
 }) {
-  await extDb({
-    data: {
-      op: "insert",
-      tabela: "escoteiros_estagios" as any,
-      valores: {
-        escoteiro_id: input.escoteiroId,
-        estagio: input.estagio,
-        data_conclusao: input.data || null,
-        registrado_por: input.registradoPor || null,
-      },
-    },
+  const { error } = await supabase.from("escoteiros_estagios").insert({
+    escoteiro_id: input.escoteiroId,
+    estagio: input.estagio,
+    data_conclusao: input.data || null,
+    registrado_por: input.registradoPor || null,
   });
+  if (error) throw error;
 }
 
 export async function fetchEspecProgressoCompleto(jovemId: string): Promise<EspecialidadeProgresso[]> {
-  const rows = await sel("especialidades_progresso" as any, { escoteiro_id: jovemId });
-  return rows.map((r: any) => ({
+  const { data, error } = await supabase.from("especialidades_progresso").select("*").eq("escoteiro_id", jovemId);
+  if (error) throw error;
+
+  return (data || []).map((r: any) => ({
     id: r['id'] ?? "",
     nome: r['nome'] ?? "",
     nivel: Number(r['nivel'] ?? 0),
@@ -284,54 +304,58 @@ export const fetchEspecialidadesProgresso = fetchEspecProgressoCompleto;
 
 export async function marcarAcolhida(input: { jovemId: string; itemId: string; data: string; validadoPor: string }) {
   await desmarcarAcolhida(input.jovemId, input.itemId);
-  await extDb({
-    data: {
-      op: "insert",
-      tabela: "acolhida_progresso",
-      valores: {
-        escoteiro_id: input.jovemId,
-        item_id: Number(input.itemId),
-        data_conclusao: input.data,
-        validado_por: input.validadoPor || null,
-      },
-    },
+  const { error } = await supabase.from("acolhida_progresso").insert({
+    escoteiro_id: input.jovemId,
+    item_id: Number(input.itemId),
+    data_conclusao: input.data,
+    validado_por: input.validadoPor || null,
   });
+  if (error) throw error;
 }
 
 export async function desmarcarAcolhida(jovemId: string, itemId: string) {
-  await extDb({
-    data: { op: "delete", tabela: "acolhida_progresso", filtros: { escoteiro_id: jovemId, item_id: Number(itemId) } },
-  });
+  const { error } = await supabase
+    .from("acolhida_progresso")
+    .delete()
+    .eq("escoteiro_id", jovemId)
+    .eq("item_id", Number(itemId));
+  if (error) throw error;
 }
 
 export async function marcarAcao(input: { jovemId: string; acaoId: string; data: string; validadoPor: string }) {
   await desmarcarAcao(input.jovemId, input.acaoId);
-  await extDb({
-    data: {
-      op: "insert",
-      tabela: "progresso_acoes",
-      valores: {
-        escoteiro_id: input.jovemId,
-        acao_id: input.acaoId,
-        data_conclusao: input.data,
-        validado_por: input.validadoPor || null,
-      },
-    },
+  const { error } = await supabase.from("progresso_acoes").insert({
+    escoteiro_id: input.jovemId,
+    acao_id: input.acaoId,
+    data_conclusao: input.data,
+    validado_por: input.validadoPor || null,
   });
+  if (error) throw error;
 }
 
 export async function desmarcarAcao(jovemId: string, acaoId: string) {
-  await extDb({
-    data: { op: "delete", tabela: "progresso_acoes", filtros: { escoteiro_id: jovemId, acao_id: acaoId } },
-  });
+  const { error } = await supabase
+    .from("progresso_acoes")
+    .delete()
+    .eq("escoteiro_id", jovemId)
+    .eq("acao_id", acaoId);
+  if (error) throw error;
 }
 
 export async function liberarPromessa(jovemId: string, _liberadaPor: string, data: string) {
-  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id: jovemId }, valores: { data_promessa: data } } });
+  const { error } = await supabase
+    .from("escoteiros")
+    .update({ data_promessa: data })
+    .eq("id", jovemId);
+  if (error) throw error;
 }
 
 export async function removerPromessa(jovemId: string) {
-  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id: jovemId }, valores: { data_promessa: null } } });
+  const { error } = await supabase
+    .from("escoteiros")
+    .update({ data_promessa: null })
+    .eq("id", jovemId);
+  if (error) throw error;
 }
 
 export async function criarJovem(dados: {
@@ -341,19 +365,14 @@ export async function criarJovem(dados: {
   email?: string | null;
   perfil?: string;
 }) {
-  await extDb({
-    data: {
-      op: "insert",
-      tabela: "escoteiros",
-      valores: {
-        nome_completo: dados.nome,
-        patrulha: dados.patrulha || null,
-        registro_ueb: dados.registro_ueb || null,
-        email: dados.email ? dados.email.trim().toLowerCase() : null,
-        perfil: dados.perfil || "ESCOTEIRO",
-      },
-    },
+  const { error } = await supabase.from("escoteiros").insert({
+    nome_completo: dados.nome,
+    patrulha: dados.patrulha || null,
+    registro_ueb: dados.registro_ueb || null,
+    email: dados.email ? dados.email.trim().toLowerCase() : null,
+    perfil: dados.perfil || "ESCOTEIRO",
   });
+  if (error) throw error;
 }
 
 export async function atualizarJovem(
@@ -366,13 +385,16 @@ export async function atualizarJovem(
   const valores: Record<string, unknown> = { nome_completo: nome, patrulha: patrulha || null };
   if (registroUeb !== undefined) valores["registro_ueb"] = registroUeb || null;
   if (email !== undefined) valores["email"] = email ? email.trim().toLowerCase() : null;
-  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, valores } });
+  
+  const { error } = await supabase.from("escoteiros").update(valores).eq("id", id);
+  if (error) throw error;
 }
 
 export async function removerJovem(id: string) {
-  await extDb({ data: { op: "delete", tabela: "acolhida_progresso", filtros: { escoteiro_id: id } } });
-  await extDb({ data: { op: "delete", tabela: "progresso_acoes", filtros: { escoteiro_id: id } } });
-  await extDb({ data: { op: "delete", tabela: "escoteiros", filtros: { id } } });
+  await supabase.from("acolhida_progresso").delete().eq("escoteiro_id", id);
+  await supabase.from("progresso_acoes").delete().eq("escoteiro_id", id);
+  const { error } = await supabase.from("escoteiros").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export const hoje = () => new Date().toISOString().slice(0, 10);
@@ -383,8 +405,12 @@ export function formatarData(iso: string) {
 }
 
 export async function fetchInsigniasProgresso(jovemId?: string): Promise<any[]> {
-  const rows = await sel("progresso_insignias_itens" as any, jovemId ? { escoteiro_id: jovemId } : undefined);
-  return rows.map((r: any) => ({
+  let query = supabase.from("progresso_insignias_itens" as any).select("*");
+  if (jovemId) query = query.eq("escoteiro_id", jovemId);
+  const { data, error } = await query;
+  if (error) return []; // Retorna vazio se a tabela opcional não existir
+
+  return (data || []).map((r: any) => ({
     id: r['id'] ?? "",
     jovem_id: r['escoteiro_id'] ?? jovemId,
     item_id: r['item_id'] ?? "",

@@ -2,28 +2,30 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchJovens } from '../lib/progressao';
 import { Award, UserCheck } from 'lucide-react';
+import { AppShell } from '@/components/AppShell';
+import { useAppState } from '@/lib/app-state';
 
 export const Route = createFileRoute('/admin/insignias')({
   component: AdminInsigniasScreen,
 });
 
 function AdminInsigniasScreen() {
+  const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+
   const { data: jovens = [], isLoading: carregandoJovens } = useQuery({
     queryKey: ['jovens'],
     queryFn: fetchJovens,
   });
 
-  if (carregandoJovens) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh] bg-slate-50 text-slate-600">
-        <p className="text-sm font-medium animate-pulse">Carregando insígnias da tropa...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6 pt-6">
+    <AppShell
+      perfil={perfil}
+      onPerfilChange={setPerfil}
+      escoteiros={jovens}
+      escoteiroSelecionadoId={jovemId ?? undefined}
+      onEscoteiroChange={setJovemId}
+    >
+      <div className="space-y-6 pb-12">
         
         {/* Cabeçalho */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -36,30 +38,39 @@ function AdminInsigniasScreen() {
           </div>
         </div>
 
-        {/* Painel de Acompanhamento por Jovem */}
-        <div className="space-y-4">
-          {jovens.map((jovem) => (
-            <div key={jovem.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">{jovem.nome}</h3>
-                  <span className="text-xs text-slate-500">Patrulha: <strong>{jovem.patrulha || 'Sem Patrulha'}</strong></span>
+        {/* Estado de Carregamento */}
+        {carregandoJovens ? (
+          <div className="flex justify-center items-center py-12 text-slate-500 text-sm font-medium">
+            Carregando insígnias da tropa...
+          </div>
+        ) : (
+          /* Painel de Acompanhamento por Jovem */
+          <div className="space-y-4">
+            {jovens.map((jovem: any) => (
+              <div key={jovem.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      {jovem.nome_completo || jovem.nome || "Sem nome"}
+                    </h3>
+                    <span className="text-xs text-slate-500">Patrulha: <strong>{jovem.patrulha || 'Sem Patrulha'}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <UserCheck className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Ver Progresso de Insígnias</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <UserCheck className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Ver Progresso de Insígnias</span>
-                </div>
-              </div>
 
-              {/* Espaço reservado para listagem de insígnias do jovem */}
-              <div className="text-xs text-slate-500 italic py-2">
-                Nenhuma insígnia em progresso ou conquistada listada no momento.
+                {/* Espaço reservado para listagem de insígnias do jovem */}
+                <div className="text-xs text-slate-500 italic py-2">
+                  Nenhuma insígnia em progresso ou conquistada listada no momento.
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
       </div>
-    </div>
+    </AppShell>
   );
 }

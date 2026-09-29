@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { fetchJovens, criarJovem, removerJovem } from '../lib/progressao';
 import { Users, UserPlus, Trash2, ChevronRight, Shield } from 'lucide-react';
+import { AppShell } from '@/components/AppShell';
+import { useAppState } from '@/lib/app-state';
 
 export const Route = createFileRoute('/admin/jovens')({
   component: AdminJovensScreen,
@@ -10,6 +12,8 @@ export const Route = createFileRoute('/admin/jovens')({
 
 function AdminJovensScreen() {
   const queryClient = useQueryClient();
+  const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
+
   const [nomeNovo, setNomeNovo] = useState('');
   const [patrulhaNova, setPatrulhaNova] = useState('');
   const [registroUebNovo, setRegistroUebNovo] = useState('');
@@ -34,17 +38,15 @@ function AdminJovensScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jovens'] }),
   });
 
-  if (carregandoJovens) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh] bg-slate-50 text-slate-600">
-        <p className="text-sm font-medium animate-pulse">Carregando cadastro de jovens...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6 pt-6">
+    <AppShell
+      perfil={perfil}
+      onPerfilChange={setPerfil}
+      escoteiros={jovens}
+      escoteiroSelecionadoId={jovemId ?? undefined}
+      onEscoteiroChange={setJovemId}
+    >
+      <div className="space-y-6 pb-12">
         
         {/* Cabeçalho */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -103,47 +105,56 @@ function AdminJovensScreen() {
         </div>
 
         {/* Listagem de Jovens */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-sky-600" /> Relação de Membros
-            </span>
-            <span className="text-xs text-slate-400">Clique para ver conquistas individuais (futuro)</span>
+        {carregandoJovens ? (
+          <div className="flex justify-center items-center py-12 text-slate-500 text-sm font-medium">
+            Carregando cadastro de jovens...
           </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-sky-600" /> Relação de Membros
+              </span>
+              <span className="text-xs text-slate-400">Clique para ver conquistas individuais</span>
+            </div>
 
-          <div className="divide-y divide-slate-100">
-            {jovens.map((jovem) => (
-              <div key={jovem.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">{jovem.nome}</h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                    <span>Patrulha: <strong>{jovem.patrulha || 'Sem Patrulha'}</strong></span>
-                    {jovem.registro_ueb && <span>• UEB: {jovem.registro_ueb}</span>}
+            <div className="divide-y divide-slate-100">
+              {jovens.map((jovem: any) => (
+                <div key={jovem.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {jovem.nome_completo || jovem.nome || "Sem nome"}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                      <span>Patrulha: <strong>{jovem.patrulha || 'Sem Patrulha'}</strong></span>
+                      {jovem.registro_ueb && <span>• UEB: {jovem.registro_ueb}</span>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        const nomeExibicao = jovem.nome_completo || jovem.nome || "este jovem";
+                        if (confirm(`Deseja realmente remover ${nomeExibicao}?`)) {
+                          removerMutation.mutate(jovem.id);
+                        }
+                      }}
+                      className="text-rose-600 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                      title="Remover jovem"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="text-slate-400">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => {
-                      if (confirm(`Deseja realmente remover ${jovem.nome}?`)) {
-                        removerMutation.mutate(jovem.id);
-                      }
-                    }}
-                    className="text-rose-600 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
-                    title="Remover jovem"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <div className="text-slate-400">
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
-    </div>
+    </AppShell>
   );
 }
