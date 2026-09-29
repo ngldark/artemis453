@@ -24,7 +24,7 @@ export interface AppShellProps {
   onPerfilChange?: (perfil: Perfil) => void;
   escoteiros?: EscoteiroItem[];
   jovens?: EscoteiroItem[];
-  escoteiroSelecionadoId?: string;
+  escoteiroSelecionadoId?: string | undefined;
   onEscoteiroChange?: (id: string) => void;
 }
 
@@ -40,7 +40,6 @@ export function AppShell({
   const location = useLocation();
   const currentPath = location?.pathname || "/";
 
-  // Estados locais caso não venham controlados por props
   const [perfilLocal, setPerfilLocal] = useState<string>(String(propPerfil || "CHEFE"));
   const [jovensState, setJovensState] = useState<EscoteiroItem[]>([]);
   const [jovemSelecionadoLocal, setJovemSelecionadoLocal] = useState<string>(propEscoteiroId || "");
@@ -48,7 +47,6 @@ export function AppShell({
   const perfilUpper = String(perfilLocal).toUpperCase();
   const isChefe = perfilUpper === "CHEFE";
 
-  // Carrega os jovens automaticamente caso não sejam passados via props
   useEffect(() => {
     if (propEscoteiros.length > 0) {
       setJovensState(propEscoteiros);
@@ -64,10 +62,6 @@ export function AppShell({
       .then((data) => {
         if (isMounted && data) {
           setJovensState(data);
-          // Se houver jovens e nenhum selecionado, opcionalmente seleciona o primeiro se for chefe
-          if (data.length > 0 && !jovemSelecionadoLocal && !propEscoteiroId) {
-            // setJovemSelecionadoLocal(data[0].id);
-          }
         }
       })
       .catch((err) => console.error("Erro ao carregar jovens no AppShell:", err));
@@ -75,7 +69,7 @@ export function AppShell({
     return () => {
       isMounted = false;
     };
-  }, [propEscoteiros, propJovens, propEscoteiroId, jovemSelecionadoLocal]);
+  }, [propEscoteiros, propJovens, propEscoteiroId]);
 
   const handlePerfilChange = (val: string) => {
     const p = val as Perfil;
@@ -86,12 +80,10 @@ export function AppShell({
   const listaJovensBruta = propEscoteiros.length > 0 ? propEscoteiros : propJovens.length > 0 ? propJovens : jovensState;
   const jovemSelecionado = propEscoteiroId || jovemSelecionadoLocal;
 
-  // Garante a recuperação do nome independente do campo vindo do banco
   const getNomeJovem = (jovem: EscoteiroItem) => {
     return jovem.nome || jovem.nome_completo || jovem.name || "Sem nome";
   };
 
-  // Ordenação alfabética dos jovens pelo nome
   const listaJovens = [...listaJovensBruta].sort((a, b) => {
     const nomeA = getNomeJovem(a);
     const nomeB = getNomeJovem(b);
@@ -103,15 +95,22 @@ export function AppShell({
     onEscoteiroChange?.(id);
   };
 
-  // Mapeamento das rotas para a barra inferior
-  const navItems = [
-    { to: "/", label: "Acolhida", icon: Compass },
-    { to: "/eixos", label: "Eixos", icon: Layers },
-    { to: "/especialidades", label: "Especialidades", icon: Award },
-    { to: "/insignias", label: "Insígnias", icon: Shield },
-    ...(isChefe ? [{ to: "/lote", label: "Em Lote", icon: CheckSquare }] : []),
-    ...(isChefe ? [{ to: "/jovens", label: "Jovens", icon: Users }] : []),
-  ];
+  // Mapeamento dinâmico das rotas: se for chefe, direciona para o prefixo /admin correspondente
+  const navItems = isChefe
+    ? [
+        { to: "/admin/acolhida", label: "Acolhida", icon: Compass },
+        { to: "/admin/eixos", label: "Eixos", icon: Layers },
+        { to: "/admin/especialidades", label: "Especialidades", icon: Award },
+        { to: "/admin/insignias", label: "Insígnias", icon: Shield },
+        { to: "/admin/pontuacao", label: "Em Lote", icon: CheckSquare },
+        { to: "/admin/jovens", label: "Jovens", icon: Users },
+      ]
+    : [
+        { to: "/", label: "Acolhida", icon: Compass },
+        { to: "/eixos", label: "Eixos", icon: Layers },
+        { to: "/especialidades", label: "Especialidades", icon: Award },
+        { to: "/insignias", label: "Insígnias", icon: Shield },
+      ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-20">
@@ -119,7 +118,7 @@ export function AppShell({
       <header className="bg-teal-800 text-white px-4 py-3 shadow-md flex items-center justify-between gap-2 sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <span className="text-xl">🧭</span>
-          <h1 className="font-bold text-lg hidden sm:block">Progressão Escoteira</h1>
+          <h1 className="font-bold text-lg hidden sm:block">Progressão Escoteira (Chefia)</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -140,7 +139,7 @@ export function AppShell({
 
           {/* Dropdown de Seleção de Jovem (Exibido para CHEFE) */}
           {isChefe && listaJovens.length > 0 && (
-            <Select value={jovemSelecionado || undefined} onValueChange={handleJovemChange}>
+            <Select value={jovemSelecionado || ""} onValueChange={handleJovemChange}>
               <SelectTrigger className="w-[170px] sm:w-[220px] bg-teal-700/60 border-teal-600/50 text-white font-medium focus:ring-teal-400 truncate">
                 <SelectValue placeholder="Selecione o jovem" />
               </SelectTrigger>
