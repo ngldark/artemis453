@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Compass, Layers, Award, Shield, CheckSquare, Users } from "lucide-react";
+import { Compass, Layers, Award, Shield, CheckSquare, Users, Trophy, ClipboardCheck } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -96,21 +96,23 @@ export function AppShell({
   };
 
   // Mapeamento dinâmico das rotas: se for chefe, direciona para o prefixo /admin correspondente
-  const navItems = isChefe
-    ? [
-        { to: "/admin/acolhida", label: "Acolhida", icon: Compass },
-        { to: "/admin/eixos", label: "Eixos", icon: Layers },
-        { to: "/admin/especialidades", label: "Especialidades", icon: Award },
-        { to: "/admin/insignias", label: "Insígnias", icon: Shield },
-        { to: "/admin/pontuacao", label: "Em Lote", icon: CheckSquare },
-        { to: "/admin/jovens", label: "Jovens", icon: Users },
-      ]
-    : [
-        { to: "/", label: "Acolhida", icon: Compass },
-        { to: "/eixos", label: "Eixos", icon: Layers },
-        { to: "/especialidades", label: "Especialidades", icon: Award },
-        { to: "/insignias", label: "Insígnias", icon: Shield },
-      ];
+// Mapeamento dinâmico das rotas para o perfil de Chefe com todas as abas necessárias
+const navItems = isChefe
+? [
+    { to: "/admin/acolhida", label: "Acolhida", icon: Compass },
+    { to: "/admin/eixos", label: "Eixos", icon: Layers },
+    { to: "/admin/especialidades", label: "Espec.", icon: Award },
+    { to: "/admin/insignias", label: "Insígnias", icon: Shield },
+    { to: "/admin/pontuacao", label: "Pontuação", icon: Trophy },
+    { to: "/admin/presenca", label: "Presença", icon: ClipboardCheck },
+    { to: "/admin/jovens", label: "Jovens", icon: Users },
+  ]
+: [
+    { to: "/", label: "Acolhida", icon: Compass },
+    { to: "/eixos", label: "Eixos", icon: Layers },
+    { to: "/especialidades", label: "Especialidades", icon: Award },
+    { to: "/insignias", label: "Insígnias", icon: Shield },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-20">
