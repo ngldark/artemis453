@@ -8,9 +8,12 @@ import { Card } from "@/components/ui/card";
 import { useAppState } from "@/lib/app-state";
 import {
   fetchPromessas,
-  fetchEscoteiros,
+  fetchJovens,
   fetchEspecProgressoCompleto,
   formatarData,
+  Promessa,
+  Jovem,
+  EspecialidadeProgresso,
 } from "@/lib/progressao";
 
 export const Route = createFileRoute("/especialidades")({
@@ -27,36 +30,26 @@ function EspecialidadesRoutePage() {
   const navigate = useNavigate();
   const { perfil, setPerfil, jovemId, setJovemId } = useAppState();
 
-  // Busca a lista de escoteiros para alimentar o seletor no AppShell
-  const { data: escoteiros = [] } = useQuery({
+  // Busca a lista de escoteiros usando fetchJovens para compatibilidade de tipos
+  const { data: escoteiros = [] } = useQuery<Jovem[]>({
     queryKey: ["escoteiros"],
-    queryFn: fetchEscoteiros,
+    queryFn: fetchJovens,
   });
 
   // Garante que o primeiro escoteiro fique selecionado por padrão se nenhum estiver ativo
   useEffect(() => {
-    if (escoteiros.length > 0 && !jovemId) {
-      setJovemId(escoteiros[0].id);
+    if (escoteiros && escoteiros.length > 0 && !jovemId) {
+      setJovemId(escoteiros[0]?.id ?? null);
     }
   }, [escoteiros, jovemId, setJovemId]);
-
-  const handleAbaChange = (aba: string) => {
-    if (aba === "progressao") {
-      navigate({ to: "/" });
-    } else {
-      navigate({ to: "/insignias" });
-    }
-  };
 
   return (
     <AppShell
       perfil={perfil}
       onPerfilChange={setPerfil}
       escoteiros={escoteiros}
-      escoteiroSelecionadoId={jovemId}
+      escoteiroSelecionadoId={jovemId ?? ""}
       onEscoteiroChange={setJovemId}
-      abaAtiva="conquistas"
-      onAbaChange={handleAbaChange}
     >
       <EspecialidadesPage />
     </AppShell>
@@ -67,11 +60,15 @@ function EspecialidadesPage() {
   const { jovemId } = useAppState();
   const navigate = useNavigate();
 
-  const { data: promessas = [] } = useQuery({ queryKey: ["promessas"], queryFn: fetchPromessas });
-  const promessa = promessas.find((p) => (p.jovem_id || p.escoteiro_id) === jovemId);
+  const { data: promessas = [] } = useQuery<Promessa[]>({
+    queryKey: ["promessas"],
+    queryFn: fetchPromessas,
+  });
+  
+  const promessa = promessas.find((p: Promessa) => p.jovem_id === jovemId);
 
   // Busca o progresso detalhado das especialidades para o jovem selecionado
-  const { data: especialidadesProgresso = [] } = useQuery({
+  const { data: especialidadesProgresso = [] } = useQuery<EspecialidadeProgresso[]>({
     queryKey: ["especialidades_progresso_completo", jovemId],
     queryFn: () => fetchEspecProgressoCompleto(jovemId!),
     enabled: !!jovemId,
@@ -95,7 +92,7 @@ function EspecialidadesPage() {
         <h1 className="text-lg font-bold">Especialidades</h1>
         <p className="text-sm text-muted-foreground">
           {promessa
-            ? `Liberadas desde a Promessa em ${formatarData(promessa.liberada_em || promessa.data_promessa)}. Nível 1 na metade dos itens · Nível 2 com todos.`
+            ? `Liberadas desde a Promessa em ${formatarData(promessa.liberada_em)}. Nível 1 na metade dos itens · Nível 2 com todos.`
             : "Nível 1 na metade dos itens · Nível 2 com todos."}
         </p>
       </div>
@@ -104,7 +101,10 @@ function EspecialidadesPage() {
         eixos={[]}
         especialidades={especialidadesProgresso}
         onSelectEspecialidade={(esp) => {
-          navigate({ to: "/especialidade/$id", params: { id: esp.id } });
+          navigate({ 
+            to: "/especialidade/$id" as any, 
+            params: { id: esp.id } as any
+          });
         }}
       />
     </div>

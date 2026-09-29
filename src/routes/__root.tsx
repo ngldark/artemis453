@@ -131,7 +131,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AppStateProvider>
         <AuthGate>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          {/* O AuthGate bloqueia o Outlet e exibe o form de login se não estiver autenticado */}
           <Outlet />
         </AuthGate>
         <Toaster position="top-center" />

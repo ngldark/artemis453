@@ -1,878 +1,404 @@
-import { extDb, TABELAS } from "./ext.functions";
+import { extDb, meuMembro, TABELAS } from "./ext.functions";
+import type { Membro } from "./membro";
 
-export type TabelaNome = (typeof TABELAS)[number];
-export type Perfil = "escoteiro" | "chefe" | "ESCOTEIRO" | "CHEFE";
-export type TipoAcao = "FIXA" | "VARIAVEL" | "fixa" | "variavel";
+// Re-exporta o Membro para que componentes como o AuthGate possam importá-lo daqui
+export type { Membro };
 
-// --- TIPOS DE ENTIDADES OFICIAIS ---
-export interface Jovem {
-  id: string;
-  nome?: string | null;
-  nome_completo?: string | null;
-  name?: string | null;
-  patrulha?: string | null;
-  data_nascimento?: string | null;
-  promessa_liberada?: boolean;
-  data_promessa?: string | null;
-  email?: string | null;
-  perfil?: Perfil | string;
-  [key: string]: unknown;
+export async function fetchMeuMembro(): Promise<Membro | null> {
+  const txt = await meuMembro();
+  return JSON.parse(txt) as Membro | null;
 }
 
-export type Escoteiro = Jovem;
+// Todos os dados vêm do banco oficial da tropa (projeto externo),
+// acessado por funções no servidor.
 
-export interface Membro {
-  id: string;
-  nome?: string | null;
-  nome_completo?: string | null;
-  patrulha?: string | null;
-  perfil?: Perfil | string;
-  email?: string | null;
-  promessa_liberada?: boolean;
-  data_promessa?: string | null;
-  [key: string]: unknown;
-}
+export type Perfil = "escoteiro" | "chefe";
 
-export interface ItemAcolhida {
-  id: string;
-  titulo?: string;
-  descricao?: string;
-  ordem?: number;
-  [key: string]: unknown;
-}
-
-export interface AcolhidaProgresso {
-  id?: string;
-  escoteiro_id: string;
-  jovem_id?: string;
-  item_acolhida_id: string;
-  item_id?: string;
-  concluida: boolean;
-  data_conclusao?: string;
-  data_realizacao?: string;
-  validado_por?: string;
-  [key: string]: unknown;
-}
-
-export interface Eixo {
+export type Jovem = {
   id: string;
   nome: string;
-  ordem?: number;
-  [key: string]: unknown;
-}
+  patrulha: string | null;
+  registro_ueb?: string | null;
+  email?: string | null;
+  perfil?: string;
+};
 
-export interface Bloco {
+export type ItemAcolhida = { id: string; ordem: number; titulo: string; descricao: string | null };
+export type AcolhidaProgresso = {
+  id: string;
+  jovem_id: string;
+  item_id: string;
+  data_realizacao: string;
+  validado_por: string | null;
+};
+export type Eixo = { id: string; nome: string; cor: string; ordem: number };
+export type Bloco = {
   id: string;
   eixo_id: string;
   nome: string;
-  ordem?: number;
-  [key: string]: unknown;
-}
+  descricao: string | null;
+  ordem: number;
+  meta_variaveis: number;
+};
+export type AcaoProgresso = {
+  id: string;
+  jovem_id: string;
+  acao_id: string;
+  data_realizacao: string;
+  validado_por: string | null;
+};
+export type Promessa = { id: string; jovem_id: string; liberada_em: string; liberada_por: string | null };
 
-export interface AcaoCatalogo {
+export type TipoAcao = "FIXA" | "VARIAVEL" | "OU";
+export type AcaoCatalogo = {
   id: string;
   bloco_id: string;
-  codigo?: string;
-  descricao?: string;
-  tipo?: TipoAcao;
-  ordem?: number;
-  [key: string]: unknown;
-}
-
-export interface StatusBloco {
-  id?: string;
-  bloco_id: string;
+  tipo: TipoAcao;
+  numero: number;
+  descricao: string;
+};
+export type StatusBloco = {
   escoteiro_id: string;
-  [key: string]: unknown;
-}
-
-export interface Promessa {
-  id: string;
-  escoteiro_id?: string;
-  jovem_id?: string;
-  data_promessa?: string;
-  liberada_em?: string;
-  liberada_por?: string;
-  promessa_liberada?: boolean;
-  [key: string]: unknown;
-}
-
-// Mapeamento visual e amigável dos Eixos
-export const MAPA_EIXOS: Record<string, { nome: string; ordem: number }> = {
-  EIXO_HABILIDADES: { nome: "Habilidades para a Vida", ordem: 1 },
-  EIXO_MEIO_AMBIENTE: { nome: "Meio Ambiente", ordem: 2 },
-  EIXO_PAZ: { nome: "Paz e Desenvolvimento", ordem: 3 },
-  EIXO_SAUDE: { nome: "Saúde e Bem-estar", ordem: 4 },
+  bloco_id: string;
+  bloco_nome: string;
+  todas_fixas_concluidas: boolean;
+  variaveis_concluidas: number;
+  meta_variaveis: number;
+  acao_ou_concluida: boolean;
+  atalho_conquistado: boolean;
+  bloco_concluido: boolean;
 };
 
-// Utilidade interna para consultas flexíveis
-async function selQuiet<T = Record<string, unknown>>(
-  tabela: TabelaNome | string,
-  filtros?: Record<string, string | number | boolean>
-): Promise<T[]> {
-  try {
-    const raw = await extDb({ data: { op: "select", tabela: tabela as TabelaNome, filtros } });
-    return JSON.parse(raw) as T[];
-  } catch (err) {
-    console.error(`Erro ao buscar tabela ${tabela}:`, err);
-    return [];
-  }
-}
+// Tipos para os Estágios de Progressão
+export type EstagioNome = "PISTAS" | "TRILHA" | "RUMO" | "TRAVESSIA";
 
-// --- UTILITÁRIOS DE DATA ---
-export function formatarData(data?: string | Date | null): string {
-  if (!data) return "";
-  try {
-    const d = typeof data === "string" ? new Date(data) : data;
-    if (isNaN(d.getTime())) return String(data);
-    return d.toLocaleDateString("pt-BR");
-  } catch {
-    return String(data);
-  }
-}
-
-export function hoje(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-// --- TIPOS DE PROGRESSÃO PAINEL ---
-export interface AcaoProgresso {
+export type EscoteiroEstagio = {
   id: string;
-  codigo: string;
-  descricao: string;
-  tipo: "FIXA" | "VARIAVEL";
-  ordem: number;
+  escoteiro_id: string;
+  estagio: EstagioNome;
+  data_conclusao: string | null;
+  registrado_por: string | null;
+};
+
+// Tipo exportado para a rota de especialidades
+export type EspecialidadeProgresso = {
+  id: string;
+  nome: string;
+  categoria_id?: string;
+  nivel: number;
   concluida: boolean;
-  validadoPor?: string | null;
-  validadoEm?: string | null;
-}
+  [key: string]: any;
+};
 
-export interface BlocoProgresso {
+type Row = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+type Tabela = (typeof TABELAS)[number];
+
+const sel = (tabela: Tabela, filtros?: Record<string, string | number>) =>
+  extDb({ data: { op: "select", tabela, filtros } }).then((t) => JSON.parse(t) as Row[]);
+
+// Mapeamento oficial de cores e ordem com base nos eixos reais da base de dados
+const CORES_EIXOS: Record<string, string> = {
+  EIXO_HABILIDADES: "azul",
+  EIXO_MEIO_AMBIENTE: "verde",
+  EIXO_PAZ: "dourado",
+  EIXO_SAUDE: "vermelho",
+};
+
+const ORDEM_EIXOS_OFICIAL = [
+  "EIXO_HABILIDADES",
+  "EIXO_MEIO_AMBIENTE",
+  "EIXO_PAZ",
+  "EIXO_SAUDE",
+];
+
+type EscoteiroRow = {
   id: string;
-  eixoId: string;
-  nome: string;
-  ordem: number;
-  fixasTotal: number;
-  fixasConcluidas: number;
-  variaveisTotal: number;
-  variaveisConcluidas: number;
-  acoes: AcaoProgresso[];
-}
+  nome_completo: string;
+  patrulha: string | null;
+  registro_ueb: string | null;
+  perfil: string | null;
+  data_promessa: string | null;
+  email: string | null;
+};
 
-export interface EixoProgresso {
-  id: string;
-  nome: string;
-  ordem: number;
-  blocos: BlocoProgresso[];
-}
-
-export interface RequisitoEspecialidade {
-  id: string;
-  numeroItem: number;
-  descricao: string;
-  concluido: boolean;
-  validadoPor?: string | null;
-  validadoEm?: string | null;
-}
-
-export interface EspecialidadeProgresso {
-  id: string;
-  eixoId: string;
-  eixoNome: string;
-  nome: string;
-  metaItensNivel1: number;
-  requisitos: RequisitoEspecialidade[];
-  concluidosCount: number;
-  totalRequisitos: number;
-  nivelAtual: 0 | 1 | 2;
-}
-
-export interface RequisitoInsignia {
-  id: string;
-  numeroItem: number;
-  descricao: string;
-  concluido: boolean;
-  validadoPor?: string | null;
-  validadoEm?: string | null;
-}
-
-export interface InsigniaProgresso {
-  id: string;
-  eixoId: string;
-  nome: string;
-  requisitos: RequisitoInsignia[];
-  concluidosCount: number;
-  totalRequisitos: number;
-  concluida: boolean;
-}
-
-// --- CARREGAMENTO DE EIXOS, BLOCOS E AÇÕES ---
-export async function carregarEixosEBlocos(escoteiroId?: string): Promise<EixoProgresso[]> {
-  const [eixosRaw, blocosRaw, acoesRaw, progressoRaw] = await Promise.all([
-    selQuiet("eixos"),
-    selQuiet("blocos"),
-    selQuiet("acoes_catalogo"),
-    selQuiet("progresso_acoes", escoteiroId ? { escoteiro_id: escoteiroId } : undefined),
-  ]);
-
-  const progressoMap = new Map<string, { validado_por?: string; validado_em?: string }>();
-  for (const p of progressoRaw) {
-    const acaoId = String(p["acao_id"] ?? "");
-    if (acaoId) progressoMap.set(acaoId, p);
-  }
-
-  const eixosMap = new Map<string, EixoProgresso>();
-
-  for (const e of eixosRaw) {
-    const rawId = String(e["id"] ?? "");
-    const meta = MAPA_EIXOS[rawId] ?? { nome: String(e["nome"] ?? rawId), ordem: 99 };
-    eixosMap.set(rawId, {
-      id: rawId,
-      nome: meta.nome,
-      ordem: meta.ordem,
-      blocos: [],
-    });
-  }
-
-  for (const b of blocosRaw) {
-    const blocoId = String(b["id"] ?? "");
-    const eixoId = String(b["eixo_id"] ?? "");
-    const blocoNome = String(b["nome"] ?? "");
-    const blocoOrdem = Number(b["ordem"] ?? 0);
-
-    const acoesDoBloco = acoesRaw
-      .filter((a) => String(a["bloco_id"] ?? "") === blocoId)
-      .map((a) => {
-        const acaoId = String(a["id"] ?? "");
-        const prog = progressoMap.get(acaoId);
-        return {
-          id: acaoId,
-          codigo: String(a["codigo"] ?? ""),
-          descricao: String(a["descricao"] ?? ""),
-          tipo: (String(a["tipo"] ?? "VARIAVEL").toUpperCase() === "FIXA" ? "FIXA" : "VARIAVEL") as "FIXA" | "VARIAVEL",
-          ordem: Number(a["ordem"] ?? 0),
-          concluida: !!prog,
-          validadoPor: prog?.validado_por ?? null,
-          validadoEm: prog?.validado_em ?? null,
-        };
-      })
-      .sort((a, b) => a.ordem - b.ordem);
-
-    const fixas = acoesDoBloco.filter((a) => a.tipo === "FIXA");
-    const variaveis = acoesDoBloco.filter((a) => a.tipo === "VARIAVEL");
-
-    const blocoObj: BlocoProgresso = {
-      id: blocoId,
-      eixoId,
-      nome: blocoNome,
-      ordem: blocoOrdem,
-      fixasTotal: fixas.length,
-      fixasConcluidas: fixas.filter((a) => a.concluida).length,
-      variaveisTotal: variaveis.length,
-      variaveisConcluidas: variaveis.filter((a) => a.concluida).length,
-      acoes: acoesDoBloco,
-    };
-
-    const eixo = eixosMap.get(eixoId);
-    if (eixo) {
-      eixo.blocos.push(blocoObj);
-    }
-  }
-
-  return Array.from(eixosMap.values())
-    .map((e) => ({
-      ...e,
-      blocos: e.blocos.sort((a, b) => a.ordem - b.ordem),
-    }))
-    .sort((a, b) => a.ordem - b.ordem);
-}
-
-// --- CARREGAMENTO DE ESPECIALIDADES ---
-export async function carregarEspecialidades(escoteiroId?: string): Promise<EspecialidadeProgresso[]> {
-  const [catalogoRaw, itensRaw, progressoRaw] = await Promise.all([
-    selQuiet("especialidades_catalogo"),
-    selQuiet("especialidades_itens"),
-    selQuiet("progresso_especialidades_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined),
-  ]);
-
-  const progressoSet = new Map<string, { validado_por?: string; validado_em?: string }>();
-  for (const p of progressoRaw) {
-    const itemId = String(p["item_id"] ?? "");
-    if (itemId) progressoSet.set(itemId, p);
-  }
-
-  const itensPorEspecialidade = new Map<string, RequisitoEspecialidade[]>();
-  for (const item of itensRaw) {
-    const espIdKey = String(item["especialidade_id"] ?? "").toUpperCase().trim();
-    if (!espIdKey) continue;
-
-    const itemId = String(item["id"] ?? "");
-    const prog = progressoSet.get(itemId);
-
-    const req: RequisitoEspecialidade = {
-      id: itemId,
-      numeroItem: Number(item["numero_item"] ?? 0),
-      descricao: String(item["descricao"] ?? ""),
-      concluido: !!prog,
-      validadoPor: prog?.validado_por ?? null,
-      validadoEm: prog?.validado_em ?? null,
-    };
-
-    if (!itensPorEspecialidade.has(espIdKey)) {
-      itensPorEspecialidade.set(espIdKey, []);
-    }
-    itensPorEspecialidade.get(espIdKey)!.push(req);
-  }
-
-  const resultado: EspecialidadeProgresso[] = [];
-
-  for (const esp of catalogoRaw) {
-    const rawEspId = String(esp["id"] ?? "");
-    const key = rawEspId.toUpperCase().trim();
-    const eixoId = String(esp["eixo_id"] ?? "");
-    const metaNivel1 = Number(esp["meta_itens_nivel_1"] ?? 0);
-
-    const reqs = (itensPorEspecialidade.get(key) ?? []).sort((a, b) => a.numeroItem - b.numeroItem);
-    const concluidos = reqs.filter((r) => r.concluido).length;
-    const total = reqs.length;
-
-    let nivelAtual: 0 | 1 | 2 = 0;
-    if (total > 0) {
-      if (concluidos >= total) {
-        nivelAtual = 2;
-      } else if (concluidos >= metaNivel1) {
-        nivelAtual = 1;
-      }
-    }
-
-    const metaEixo = MAPA_EIXOS[eixoId] ?? { nome: eixoId };
-
-    resultado.push({
-      id: rawEspId,
-      eixoId,
-      eixoNome: metaEixo.nome,
-      nome: String(esp["nome"] ?? rawEspId),
-      metaItensNivel1: metaNivel1,
-      requisitos: reqs,
-      concluidosCount: concluidos,
-      totalRequisitos: total,
-      nivelAtual,
-    });
-  }
-
-  return resultado.sort((a, b) => a.nome.localeCompare(b.nome));
-}
-
-// --- CARREGAMENTO DE INSÍGNIAS ---
-export async function carregarInsignias(escoteiroId?: string): Promise<InsigniaProgresso[]> {
-  const [catalogoRaw, itensRaw, progressoRaw] = await Promise.all([
-    selQuiet("insignias_catalogo"),
-    selQuiet("insignias_itens"),
-    selQuiet("progresso_insignias_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined),
-  ]);
-
-  const progressoSet = new Map<string, { validado_por?: string; validado_em?: string }>();
-  for (const p of progressoRaw) {
-    const itemId = String(p["item_id"] ?? "");
-    if (itemId) progressoSet.set(itemId, p);
-  }
-
-  const itensPorInsignia = new Map<string, RequisitoInsignia[]>();
-  for (const item of itensRaw) {
-    const insgIdKey = String(item["insignia_id"] ?? "").toUpperCase().trim();
-    if (!insgIdKey) continue;
-
-    const itemId = String(item["id"] ?? "");
-    const prog = progressoSet.get(itemId);
-
-    const req: RequisitoInsignia = {
-      id: itemId,
-      numeroItem: Number(item["numero_item"] ?? 0),
-      descricao: String(item["descricao"] ?? ""),
-      concluido: !!prog,
-      validadoPor: prog?.validado_por ?? null,
-      validadoEm: prog?.validado_em ?? null,
-    };
-
-    if (!itensPorInsignia.has(insgIdKey)) {
-      itensPorInsignia.set(insgIdKey, []);
-    }
-    itensPorInsignia.get(insgIdKey)!.push(req);
-  }
-
-  const resultado: InsigniaProgresso[] = [];
-
-  for (const insg of catalogoRaw) {
-    const rawInsgId = String(insg["id"] ?? "");
-    const key = rawInsgId.toUpperCase().trim();
-    const eixoId = String(insg["eixo_id"] ?? "");
-
-    const reqs = (itensPorInsignia.get(key) ?? []).sort((a, b) => a.numeroItem - b.numeroItem);
-    const concluidos = reqs.filter((r) => r.concluido).length;
-    const total = reqs.length;
-
-    resultado.push({
-      id: rawInsgId,
-      eixoId,
-      nome: String(insg["nome"] ?? rawInsgId),
-      requisitos: reqs,
-      concluidosCount: concluidos,
-      totalRequisitos: total,
-      concluida: total > 0 && concluidos >= total,
-    });
-  }
-
-  return resultado;
-}
-
-// --- CONSULTA E GERENCIAMENTO DE MEMBROS E PROMESSA ---
-
-export async function fetchMeuMembro(): Promise<Membro | null> {
-  const res = await selQuiet<Membro>("escoteiros");
-  return res[0] ?? null;
+export async function fetchEscoteiros() {
+  return (await sel("escoteiros")) as EscoteiroRow[];
 }
 
 export async function fetchJovens(): Promise<Jovem[]> {
-  const lista = await selQuiet<Jovem>("escoteiros");
-  
-  // Normalização e preenchimento cruzado dos campos de nome e nome_completo
-  const normalizados = lista.map((j) => {
-    const nomeBase = j.nome || j.nome_completo || j.name || "";
-    const nomeCompletoBase = j.nome_completo || j.nome || j.name || "";
-    return {
-      ...j,
-      nome: nomeBase,
-      nome_completo: nomeCompletoBase,
-    };
-  });
-
-  return normalizados.sort((a, b) => {
-    const nomeA = a.nome || "";
-    const nomeB = b.nome || "";
-    return nomeA.localeCompare(nomeB, "pt-BR", { sensitivity: "base" });
-  });
+  const rows = await fetchEscoteiros();
+  return rows
+    .filter((r) => (r.perfil ?? "ESCOTEIRO").toUpperCase() !== "CHEFE")
+    .map((r) => ({
+      id: r.id ?? "",
+      nome: r.nome_completo,
+      patrulha: r.patrulha,
+      registro_ueb: r.registro_ueb,
+      email: r.email ?? null,
+      perfil: r.perfil ?? "ESCOTEIRO",
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
-
-export const fetchEscoteiros = fetchJovens;
-
-export async function criarJovem(dados: Record<string, unknown>) {
-  return extDb({ data: { op: "insert", tabela: "escoteiros", dados } });
-}
-
-export async function atualizarJovem(id: string, dados: Record<string, unknown>) {
-  return extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, dados } });
-}
-
-export async function removerJovem(id: string) {
-  return extDb({ data: { op: "delete", tabela: "escoteiros", filtros: { id } } });
-}
-
-export async function salvarJovem(dados: Record<string, unknown>) {
-  if (dados.id) {
-    return atualizarJovem(String(dados.id), dados);
-  }
-  return criarJovem(dados);
-}
-
-export async function fetchPromessas(): Promise<Promessa[]> {
-  const todos = await selQuiet<Jovem>("escoteiros");
-  return todos
-    .filter((j) => Boolean(j.data_promessa) || Boolean(j.promessa_liberada))
-    .map((j) => ({
-      id: j.id,
-      escoteiro_id: j.id,
-      jovem_id: j.id,
-      data_promessa: j.data_promessa ?? undefined,
-      liberada_em: j.data_promessa ?? undefined,
-      promessa_liberada: true,
-    }));
-}
-
-export async function liberarPromessa(escoteiroId: string, arg2?: string, arg3?: string) {
-  let dataPromessa = hoje();
-  if (arg3) {
-    dataPromessa = arg3;
-  } else if (arg2) {
-    dataPromessa = arg2;
-  }
-
-  return extDb({
-    data: {
-      op: "update",
-      tabela: "escoteiros",
-      filtros: { id: escoteiroId },
-      dados: {
-        promessa_liberada: true,
-        data_promessa: dataPromessa,
-      },
-    },
-  });
-}
-
-export async function removerPromessa(escoteiroId: string) {
-  return extDb({
-    data: {
-      op: "update",
-      tabela: "escoteiros",
-      filtros: { id: escoteiroId },
-      dados: {
-        promessa_liberada: false,
-        data_promessa: null,
-      },
-    },
-  });
-}
-
-// --- CONSULTA E GERENCIAMENTO DE ACOLHIDA ---
 
 export async function fetchAcolhidaCatalogo(): Promise<ItemAcolhida[]> {
-  const res = await selQuiet<Record<string, unknown>>("acolhida_catalogo");
-  return res.map((item, index) => {
-    const idStr = String(item["id"] ?? index + 1);
-    const descricao = String(item["descricao"] ?? item["titulo"] ?? "");
-    return {
-      ...item,
-      id: idStr,
-      ordem: Number(item["ordem"] ?? (isNaN(Number(idStr)) ? index + 1 : Number(idStr))),
-      titulo: String(item["titulo"] ?? descricao),
-      descricao: descricao,
-    };
-  }).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const rows = await sel("acolhida_catalogo");
+  return rows
+    .map((r) => ({ id: String(r.id), ordem: Number(r.id), titulo: r.descricao as string, descricao: null }))
+    .sort((a, b) => a.ordem - b.ordem);
 }
 
-export async function fetchAcolhidaProgresso(escoteiroId?: string): Promise<AcolhidaProgresso[]> {
-  const res = await selQuiet<Record<string, unknown>>(
-    "acolhida_progresso",
-    escoteiroId ? { escoteiro_id: escoteiroId } : undefined
-  );
-
-  return res.map((item) => ({
-    ...item,
-    escoteiro_id: String(item["escoteiro_id"] ?? escoteiroId ?? ""),
-    jovem_id: String(item["escoteiro_id"] ?? escoteiroId ?? ""),
-    item_acolhida_id: String(item["item_acolhida_id"] ?? item["item_id"] ?? ""),
-    item_id: String(item["item_acolhida_id"] ?? item["item_id"] ?? ""),
-    concluida: Boolean(item["concluida"] ?? true),
-    data_conclusao: String(item["data_conclusao"] ?? item["data_realizacao"] ?? ""),
-    data_realizacao: String(item["data_realizacao"] ?? item["data_conclusao"] ?? ""),
-    validado_por: item["validado_por"] ? String(item["validado_por"]) : undefined,
+export async function fetchAcolhidaProgresso(jovemId?: string): Promise<AcolhidaProgresso[]> {
+  const rows = await sel("acolhida_progresso", jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map((r) => ({
+    id: r.id ?? "",
+    jovem_id: r.escoteiro_id,
+    item_id: String(r.item_id),
+    data_realizacao: r.data_conclusao,
+    validado_por: r.validado_por,
   }));
 }
 
-export async function marcarAcolhida(
-  param1: string | { jovemId?: string; escoteiroId?: string; escoteiro_id?: string; itemId?: string; item_acolhida_id?: string; data?: string; validadoPor?: string; concluida?: boolean },
-  concluida: boolean = true,
-  escoteiroId?: string
-) {
-  if (typeof param1 === "object" && param1 !== null) {
-    const jId = param1.jovemId || param1.escoteiroId || param1.escoteiro_id || escoteiroId;
-    const itemId = param1.itemId || param1.item_acolhida_id;
-    const isConcluida = param1.concluida ?? true;
-
-    return extDb({
-      data: {
-        op: "upsert",
-        tabela: "acolhida_progresso",
-        dados: {
-          item_acolhida_id: itemId,
-          escoteiro_id: jId,
-          concluida: isConcluida,
-          data_conclusao: param1.data ?? hoje(),
-          validado_por: param1.validadoPor,
-        },
-      },
-    });
-  }
-
-  return extDb({
-    data: {
-      op: "upsert",
-      tabela: "acolhida_progresso",
-      dados: {
-        item_acolhida_id: param1,
-        escoteiro_id: escoteiroId,
-        concluida,
-        data_conclusao: hoje(),
-      },
-    },
-  });
+export async function fetchEixos(): Promise<Eixo[]> {
+  const rows = await sel("eixos");
+  return rows
+    .sort((a, b) => {
+      const ia = ORDEM_EIXOS_OFICIAL.indexOf(a.id);
+      const ib = ORDEM_EIXOS_OFICIAL.indexOf(b.id);
+      if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      return String(a.nome).localeCompare(String(b.nome), "pt-BR");
+    })
+    .map((r, i) => ({
+      id: r.id ?? "",
+      nome: r.nome,
+      cor: CORES_EIXOS[r.id] ?? "azul",
+      ordem: i + 1,
+    }));
 }
 
-export async function desmarcarAcolhida(itemAcolhidaId: string, escoteiroId?: string) {
-  return extDb({
-    data: {
-      op: "delete",
-      tabela: "acolhida_progresso",
-      filtros: escoteiroId
-        ? { item_acolhida_id: itemAcolhidaId, escoteiro_id: escoteiroId }
-        : { item_acolhida_id: itemAcolhidaId },
-    },
-  });
+export async function fetchBlocos(): Promise<Bloco[]> {
+  const rows = await sel("blocos");
+  return rows
+    .sort((a, b) => String(a.id).localeCompare(String(b.id), "pt-BR", { numeric: true }))
+    .map((r, i) => ({
+      id: r.id ?? "",
+      eixo_id: r.eixo_id,
+      nome: r.nome,
+      descricao: null,
+      ordem: i + 1,
+      meta_variaveis: Number(r.meta_variaveis ?? 0),
+    }));
 }
 
-// --- CONSULTA E GERENCIAMENTO DE EIXOS, BLOCOS E AÇÕES ---
-
-export async function fetchEixos() {
-  return selQuiet("eixos");
+export async function fetchAcoesCatalogo(blocoId?: string): Promise<AcaoCatalogo[]> {
+  const rows = await sel("acoes_catalogo", blocoId ? { bloco_id: blocoId } : undefined);
+  const ordemTipo: Record<string, number> = { FIXA: 0, VARIAVEL: 1, OU: 2 };
+  return (rows as AcaoCatalogo[]).sort(
+    (a, b) =>
+      a.bloco_id.localeCompare(b.bloco_id, "pt-BR", { numeric: true }) ||
+      (ordemTipo[a.tipo] ?? 9) - (ordemTipo[b.tipo] ?? 9) ||
+      a.numero - b.numero,
+  );
 }
 
-export async function fetchBlocos(eixoId?: string) {
-  return selQuiet("blocos", eixoId ? { eixo_id: eixoId } : undefined);
-}
-
-export async function fetchAcoesCatalogo(blocoId?: string) {
-  return selQuiet("acoes_catalogo", blocoId ? { bloco_id: blocoId } : undefined);
-}
-
-// Adicione estas funções em src/lib/progressao.ts se elas não existirem:
-
-export async function fetchEspecProgressoCompleto(jovemId: string) {
-  // Ajuste conforme a sua implementação real de busca de especialidades para o jovem
-  const catalogo = await fetchEspecialidades();
-  const itens = await fetchEspecialidadesItens();
-  const progresso = await fetchProgressoEspecialidadesItens(jovemId);
-
-  // Exemplo de mapeamento básico caso retorne estruturado:
-  return catalogo.map((esp) => {
-    const itensEsp = itens.filter((i) => i.especialidade_id === esp.id);
-    const concluidos = itensEsp.filter((i) => 
-      progresso.some((p) => p.item_id === i.id && p.concluido)
-    ).length;
-
-    const total = itensEsp.length;
-    let nivel = 0;
-    if (total > 0 && concluidos === total) nivel = 2;
-    else if (total > 0 && concluidos >= Math.ceil(total / 2)) nivel = 1;
-
+export async function fetchStatusBlocos(jovemId?: string): Promise<StatusBloco[]> {
+  const f = jovemId ? { escoteiro_id: jovemId } : undefined;
+  const [status, prog] = await Promise.all([sel("vw_status_blocos", f), sel("vw_progresso_blocos", f)]);
+  const extra = new Map(prog.map((p) => [`${p.escoteiro_id}|${p.bloco_id}`, p]));
+  return status.map((s) => {
+    const p = extra.get(`${s.escoteiro_id}|${s.bloco_id}`);
     return {
-      ...esp,
-      concluidosCount: concluidos,
-      totalRequisitos: total,
-      nivelAtual: nivel,
+      escoteiro_id: s.escoteiro_id,
+      bloco_id: s.bloco_id,
+      bloco_nome: s.bloco_nome,
+      todas_fixas_concluidas: !!s.todas_fixas_concluidas,
+      variaveis_concluidas: Number(s.variaveis_concluidas ?? 0),
+      meta_variaveis: Number(s.meta_variaveis ?? 0),
+      acao_ou_concluida: !!p?.acao_ou_concluida,
+      atalho_conquistado: !!p?.atalho_conquistado,
+      bloco_concluido: !!s.bloco_concluido,
     };
   });
 }
 
-export async function fetchInsigniasProgressoCompleto(jovemId: string) {
-  // Ajuste conforme a sua implementação real de busca de insígnias para o jovem
-  const catalogo = await fetchInsignias();
-  const itens = await fetchInsigniasItens();
-  const progresso = await fetchProgressoInsigniasItens(jovemId);
+export async function fetchAcoesProgresso(jovemId?: string): Promise<AcaoProgresso[]> {
+  const rows = await sel("progresso_acoes", jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map((r) => ({
+    id: r.id ?? "",
+    jovem_id: r.escoteiro_id,
+    acao_id: r.acao_id,
+    data_realizacao: r.data_conclusao,
+    validado_por: r.validado_por,
+  }));
+}
 
-  return catalogo.map((ins) => {
-    const itensIns = itens.filter((i) => i.insignia_id === ins.id);
-    const concluidos = itensIns.filter((i) => 
-      progresso.some((p) => p.item_id === i.id && p.concluido)
-    ).length;
+export async function fetchPromessas(): Promise<Promessa[]> {
+  const rows = await fetchEscoteiros();
+  return rows
+    .filter((r) => r.data_promessa)
+    .map((r) => ({ id: r.id ?? "", jovem_id: r.id ?? "", liberada_em: r.data_promessa as string, liberada_por: null }));
+}
 
-    const total = itensIns.length;
-    let nivel = 0;
-    if (total > 0 && concluidos === total) nivel = 2;
-    else if (total > 0 && concluidos >= Math.ceil(total / 2)) nivel = 1;
+// Funções de Estágios de Progressão (Pistas, Trilha, Rumo, Travessia)
+export async function fetchEstagiosProgresso(jovemId?: string): Promise<EscoteiroEstagio[]> {
+  const rows = await sel("escoteiros_estagios" as any, jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map((r: any) => ({
+    id: r['id'] ?? "",
+    escoteiro_id: r['escoteiro_id'] ?? "",
+    estagio: r['estagio'],
+    data_conclusao: r['data_conclusao'] ?? null,
+    registrado_por: r['registrado_por'] ?? null,
+  }));
+}
 
-    return {
-      ...ins,
-      concluidosCount: concluidos,
-      totalRequisitos: total,
-      nivelAtual: nivel,
-    };
+export async function registrarEstagio(input: {
+  escoteiroId: string;
+  estagio: EstagioNome;
+  data: string | null;
+  registradoPor?: string;
+}) {
+  await extDb({
+    data: {
+      op: "insert",
+      tabela: "escoteiros_estagios" as any,
+      valores: {
+        escoteiro_id: input.escoteiroId,
+        estagio: input.estagio,
+        data_conclusao: input.data || null,
+        registrado_por: input.registradoPor || null,
+      },
+    },
   });
 }
 
-
-export async function fetchStatusBlocos(escoteiroId?: string) {
-  return carregarEixosEBlocos(escoteiroId);
+export async function fetchEspecProgressoCompleto(jovemId: string): Promise<EspecialidadeProgresso[]> {
+  const rows = await sel("especialidades_progresso" as any, { escoteiro_id: jovemId });
+  return rows.map((r: any) => ({
+    id: r['id'] ?? "",
+    nome: r['nome'] ?? "",
+    nivel: Number(r['nivel'] ?? 0),
+    concluida: !!r['concluida'],
+    ...r,
+  }));
 }
+export const fetchEspecialidadesProgresso = fetchEspecProgressoCompleto;
 
-export async function fetchAcoesProgresso(escoteiroId?: string) {
-  return selQuiet("progresso_acoes", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
-}
-
-export async function marcarAcao(
-  param1: string | { acaoId?: string; acao_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluida?: boolean },
-  concluida: boolean = true,
-  escoteiroId?: string
-) {
-  if (typeof param1 === "object" && param1 !== null) {
-    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
-    const aId = param1.acaoId || param1.acao_id;
-    const isConcluida = param1.concluida ?? true;
-
-    return extDb({
-      data: {
-        op: "upsert",
-        tabela: "progresso_acoes",
-        dados: {
-          acao_id: aId,
-          escoteiro_id: jId,
-          concluida: isConcluida,
-          validado_em: param1.data ?? hoje(),
-          validado_por: param1.validadoPor,
-        },
-      },
-    });
-  }
-
-  return extDb({
+export async function marcarAcolhida(input: { jovemId: string; itemId: string; data: string; validadoPor: string }) {
+  await desmarcarAcolhida(input.jovemId, input.itemId);
+  await extDb({
     data: {
-      op: "upsert",
+      op: "insert",
+      tabela: "acolhida_progresso",
+      valores: {
+        escoteiro_id: input.jovemId,
+        item_id: Number(input.itemId),
+        data_conclusao: input.data,
+        validado_por: input.validadoPor || null,
+      },
+    },
+  });
+}
+
+export async function desmarcarAcolhida(jovemId: string, itemId: string) {
+  await extDb({
+    data: { op: "delete", tabela: "acolhida_progresso", filtros: { escoteiro_id: jovemId, item_id: Number(itemId) } },
+  });
+}
+
+export async function marcarAcao(input: { jovemId: string; acaoId: string; data: string; validadoPor: string }) {
+  await desmarcarAcao(input.jovemId, input.acaoId);
+  await extDb({
+    data: {
+      op: "insert",
       tabela: "progresso_acoes",
-      dados: { acao_id: param1, escoteiro_id: escoteiroId, concluida },
-    },
-  });
-}
-
-export async function desmarcarAcao(acaoId: string, escoteiroId?: string) {
-  return extDb({
-    data: {
-      op: "delete",
-      tabela: "progresso_acoes",
-      filtros: escoteiroId
-        ? { acao_id: acaoId, escoteiro_id: escoteiroId }
-        : { acao_id: acaoId },
-    },
-  });
-}
-
-export const toggleAcao = marcarAcao;
-export const salvarProgressoAcao = marcarAcao;
-
-export async function marcarAcoesLote(dados: unknown) {
-  return extDb({ data: { op: "upsert", tabela: "progresso_acoes", dados } });
-}
-
-// --- CONSULTA E GERENCIAMENTO DE ESPECIALIDADES ---
-
-export async function fetchEspecialidadesCatalogo() {
-  return selQuiet("especialidades_catalogo");
-}
-
-export const fetchEspecialidades = fetchEspecialidadesCatalogo;
-
-export async function fetchEspecialidadesItens(especialidadeId?: string) {
-  return selQuiet("especialidades_itens", especialidadeId ? { especialidade_id: especialidadeId } : undefined);
-}
-
-export async function fetchEspecialidadesProgresso(escoteiroId?: string) {
-  return selQuiet("progresso_especialidades_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
-}
-
-export const fetchProgressoEspecialidadesItens = fetchEspecialidadesProgresso;
-
-export async function marcarEspecialidadeItem(
-  param1: string | { itemId?: string; item_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluido?: boolean },
-  concluida: boolean = true,
-  escoteiroId?: string
-) {
-  if (typeof param1 === "object" && param1 !== null) {
-    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
-    const iId = param1.itemId || param1.item_id;
-    const isConcluido = param1.concluido ?? true;
-
-    return extDb({
-      data: {
-        op: "upsert",
-        tabela: "progresso_especialidades_itens",
-        dados: {
-          item_id: iId,
-          escoteiro_id: jId,
-          concluido: isConcluido,
-          validado_em: param1.data ?? hoje(),
-          validado_por: param1.validadoPor,
-        },
+      valores: {
+        escoteiro_id: input.jovemId,
+        acao_id: input.acaoId,
+        data_conclusao: input.data,
+        validado_por: input.validadoPor || null,
       },
-    });
-  }
-
-  return extDb({
-    data: {
-      op: "upsert",
-      tabela: "progresso_especialidades_itens",
-      dados: { item_id: param1, escoteiro_id: escoteiroId, concluido: concluida },
     },
   });
 }
 
-export async function desmarcarEspecialidadeItem(itemId: string, escoteiroId?: string) {
-  return extDb({
-    data: {
-      op: "delete",
-      tabela: "progresso_especialidades_itens",
-      filtros: escoteiroId
-        ? { item_id: itemId, escoteiro_id: escoteiroId }
-        : { item_id: itemId },
-    },
+export async function desmarcarAcao(jovemId: string, acaoId: string) {
+  await extDb({
+    data: { op: "delete", tabela: "progresso_acoes", filtros: { escoteiro_id: jovemId, acao_id: acaoId } },
   });
 }
 
-export const marcarItemEspecialidade = marcarEspecialidadeItem;
-export const marcarEspecialidade = marcarEspecialidadeItem;
-export const toggleItemEspecialidade = marcarEspecialidadeItem;
-
-// --- CONSULTA E GERENCIAMENTO DE INSÍGNIAS ---
-
-export async function fetchInsigniasCatalogo() {
-  return selQuiet("insignias_catalogo");
+export async function liberarPromessa(jovemId: string, _liberadaPor: string, data: string) {
+  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id: jovemId }, valores: { data_promessa: data } } });
 }
 
-export const fetchInsignias = fetchInsigniasCatalogo;
-
-export async function fetchInsigniasItens(insigniaId?: string) {
-  return selQuiet("insignias_itens", insigniaId ? { insignia_id: insigniaId } : undefined);
+export async function removerPromessa(jovemId: string) {
+  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id: jovemId }, valores: { data_promessa: null } } });
 }
 
-export async function fetchInsigniasProgresso(escoteiroId?: string) {
-  return selQuiet("progresso_insignias_itens", escoteiroId ? { escoteiro_id: escoteiroId } : undefined);
-}
-
-export const fetchProgressoInsigniasItens = fetchInsigniasProgresso;
-
-export async function marcarInsigniaItem(
-  param1: string | { itemId?: string; item_id?: string; escoteiroId?: string; escoteiro_id?: string; jovemId?: string; data?: string; validadoPor?: string; concluido?: boolean },
-  concluida: boolean = true,
-  escoteiroId?: string
-) {
-  if (typeof param1 === "object" && param1 !== null) {
-    const jId = param1.escoteiroId || param1.escoteiro_id || param1.jovemId || escoteiroId;
-    const iId = param1.itemId || param1.item_id;
-    const isConcluido = param1.concluido ?? true;
-
-    return extDb({
-      data: {
-        op: "upsert",
-        tabela: "progresso_insignias_itens",
-        dados: {
-          item_id: iId,
-          escoteiro_id: jId,
-          concluido: isConcluido,
-          validado_em: param1.data ?? hoje(),
-          validado_por: param1.validadoPor,
-        },
+export async function criarJovem(dados: {
+  nome: string;
+  patrulha?: string | null;
+  registro_ueb?: string | null;
+  email?: string | null;
+  perfil?: string;
+}) {
+  await extDb({
+    data: {
+      op: "insert",
+      tabela: "escoteiros",
+      valores: {
+        nome_completo: dados.nome,
+        patrulha: dados.patrulha || null,
+        registro_ueb: dados.registro_ueb || null,
+        email: dados.email ? dados.email.trim().toLowerCase() : null,
+        perfil: dados.perfil || "ESCOTEIRO",
       },
-    });
-  }
-
-  return extDb({
-    data: {
-      op: "upsert",
-      tabela: "progresso_insignias_itens",
-      dados: { item_id: param1, escoteiro_id: escoteiroId, concluido: concluida },
     },
   });
 }
 
-export async function desmarcarInsigniaItem(itemId: string, escoteiroId?: string) {
-  return extDb({
-    data: {
-      op: "delete",
-      tabela: "progresso_insignias_itens",
-      filtros: escoteiroId
-        ? { item_id: itemId, escoteiro_id: escoteiroId }
-        : { item_id: itemId },
-    },
-  });
+export async function atualizarJovem(
+  id: string,
+  nome: string,
+  patrulha: string,
+  registroUeb?: string,
+  email?: string,
+) {
+  const valores: Record<string, unknown> = { nome_completo: nome, patrulha: patrulha || null };
+  if (registroUeb !== undefined) valores["registro_ueb"] = registroUeb || null;
+  if (email !== undefined) valores["email"] = email ? email.trim().toLowerCase() : null;
+  await extDb({ data: { op: "update", tabela: "escoteiros", filtros: { id }, valores } });
 }
 
-export const marcarItemInsignia = marcarInsigniaItem;
-export const marcarInsignia = marcarInsigniaItem;
-export const toggleItemInsignia = marcarInsigniaItem;
+export async function removerJovem(id: string) {
+  await extDb({ data: { op: "delete", tabela: "acolhida_progresso", filtros: { escoteiro_id: id } } });
+  await extDb({ data: { op: "delete", tabela: "progresso_acoes", filtros: { escoteiro_id: id } } });
+  await extDb({ data: { op: "delete", tabela: "escoteiros", filtros: { id } } });
+}
+
+export const hoje = () => new Date().toISOString().slice(0, 10);
+
+export function formatarData(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+export async function fetchInsigniasProgresso(jovemId?: string): Promise<any[]> {
+  const rows = await sel("progresso_insignias_itens" as any, jovemId ? { escoteiro_id: jovemId } : undefined);
+  return rows.map((r: any) => ({
+    id: r['id'] ?? "",
+    jovem_id: r['escoteiro_id'] ?? jovemId,
+    item_id: r['item_id'] ?? "",
+    ...r,
+  }));
+}
+
+export async function fetchInsigniasProgressoCompleto(jovemId: string): Promise<any[]> {
+  return await fetchInsigniasProgresso(jovemId);
+}
+
+export const MAPA_EIXOS: Record<string, { nome: string; cor: string }> = {
+  EIXO_HABILIDADES: { nome: "Habilidades para a Vida", cor: "azul" },
+  EIXO_MEIO_AMBIENTE: { nome: "Meio Ambiente", cor: "verde" },
+  EIXO_PAZ: { nome: "Paz e Desenvolvimento", cor: "dourado" },
+  EIXO_SAUDE: { nome: "Saúde e Bem-estar", cor: "vermelho" },
+};

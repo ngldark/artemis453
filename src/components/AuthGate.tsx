@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Compass, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (!session || modo === "nova-senha") return;
     let cancelado = false;
     setVerificando(true);
+    
     fetchMeuMembro()
       .then((m) => {
         if (cancelado) return;
@@ -83,10 +84,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
           }
         }
       })
-      .catch(() => {
-        if (!cancelado) toast.error("Não foi possível confirmar seu acesso. Tente novamente.");
+      .catch(async () => {
+        if (cancelado) return;
+        toast.error("Erro ao validar permissões. Faça login novamente.");
+        // Se falhar ao buscar o membro, força o logout para limpar o estado travado
+        await supabase.auth.signOut();
+        setSession(null);
       })
       .finally(() => !cancelado && setVerificando(false));
+      
     return () => {
       cancelado = true;
     };

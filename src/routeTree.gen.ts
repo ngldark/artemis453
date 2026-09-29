@@ -11,11 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcolhidaRouteImport } from './routes/acolhida'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as EixosRouteImport } from './routes/eixos'
 import { Route as EspecialidadesRouteImport } from './routes/especialidades'
 import { Route as InsigniasRouteImport } from './routes/insignias'
 import { Route as JovensRouteImport } from './routes/jovens'
 import { Route as LoteRouteImport } from './routes/lote'
+import { Route as AdminAcolhidaRouteImport } from './routes/admin.acolhida'
+import { Route as AdminEixosRouteImport } from './routes/admin.eixos'
+import { Route as AdminEspecialidadesRouteImport } from './routes/admin.especialidades'
+import { Route as AdminInsigniasRouteImport } from './routes/admin.insignias'
+import { Route as AdminJovensRouteImport } from './routes/admin.jovens'
+import { Route as AdminPontuacaoRouteImport } from './routes/admin.pontuacao'
+import { Route as AdminPresencaRouteImport } from './routes/admin.presenca'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const AcolhidaRoute = AcolhidaRouteImport.update({
   id: '/acolhida',
   path: '/acolhida',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EixosRoute = EixosRouteImport.update({
@@ -52,68 +65,152 @@ const LoteRoute = LoteRouteImport.update({
   path: '/lote',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAcolhidaRoute = AdminAcolhidaRouteImport.update({
+  id: '/acolhida',
+  path: '/acolhida',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEixosRoute = AdminEixosRouteImport.update({
+  id: '/eixos',
+  path: '/eixos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEspecialidadesRoute = AdminEspecialidadesRouteImport.update({
+  id: '/especialidades',
+  path: '/especialidades',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInsigniasRoute = AdminInsigniasRouteImport.update({
+  id: '/insignias',
+  path: '/insignias',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJovensRoute = AdminJovensRouteImport.update({
+  id: '/jovens',
+  path: '/jovens',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPontuacaoRoute = AdminPontuacaoRouteImport.update({
+  id: '/pontuacao',
+  path: '/pontuacao',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPresencaRoute = AdminPresencaRouteImport.update({
+  id: '/presenca',
+  path: '/presenca',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acolhida': typeof AcolhidaRoute
+  '/admin': typeof AdminRouteWithChildren
   '/eixos': typeof EixosRoute
   '/especialidades': typeof EspecialidadesRoute
   '/insignias': typeof InsigniasRoute
   '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
+  '/admin/acolhida': typeof AdminAcolhidaRoute
+  '/admin/eixos': typeof AdminEixosRoute
+  '/admin/especialidades': typeof AdminEspecialidadesRoute
+  '/admin/insignias': typeof AdminInsigniasRoute
+  '/admin/jovens': typeof AdminJovensRoute
+  '/admin/pontuacao': typeof AdminPontuacaoRoute
+  '/admin/presenca': typeof AdminPresencaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acolhida': typeof AcolhidaRoute
+  '/admin': typeof AdminRouteWithChildren
   '/eixos': typeof EixosRoute
   '/especialidades': typeof EspecialidadesRoute
   '/insignias': typeof InsigniasRoute
   '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
+  '/admin/acolhida': typeof AdminAcolhidaRoute
+  '/admin/eixos': typeof AdminEixosRoute
+  '/admin/especialidades': typeof AdminEspecialidadesRoute
+  '/admin/insignias': typeof AdminInsigniasRoute
+  '/admin/jovens': typeof AdminJovensRoute
+  '/admin/pontuacao': typeof AdminPontuacaoRoute
+  '/admin/presenca': typeof AdminPresencaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acolhida': typeof AcolhidaRoute
+  '/admin': typeof AdminRouteWithChildren
   '/eixos': typeof EixosRoute
   '/especialidades': typeof EspecialidadesRoute
   '/insignias': typeof InsigniasRoute
   '/jovens': typeof JovensRoute
   '/lote': typeof LoteRoute
+  '/admin/acolhida': typeof AdminAcolhidaRoute
+  '/admin/eixos': typeof AdminEixosRoute
+  '/admin/especialidades': typeof AdminEspecialidadesRoute
+  '/admin/insignias': typeof AdminInsigniasRoute
+  '/admin/jovens': typeof AdminJovensRoute
+  '/admin/pontuacao': typeof AdminPontuacaoRoute
+  '/admin/presenca': typeof AdminPresencaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/acolhida'
+    | '/admin'
     | '/eixos'
     | '/especialidades'
     | '/insignias'
     | '/jovens'
     | '/lote'
+    | '/admin/acolhida'
+    | '/admin/eixos'
+    | '/admin/especialidades'
+    | '/admin/insignias'
+    | '/admin/jovens'
+    | '/admin/pontuacao'
+    | '/admin/presenca'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/acolhida'
+    | '/admin'
     | '/eixos'
     | '/especialidades'
     | '/insignias'
     | '/jovens'
     | '/lote'
+    | '/admin/acolhida'
+    | '/admin/eixos'
+    | '/admin/especialidades'
+    | '/admin/insignias'
+    | '/admin/jovens'
+    | '/admin/pontuacao'
+    | '/admin/presenca'
   id:
     | '__root__'
     | '/'
     | '/acolhida'
+    | '/admin'
     | '/eixos'
     | '/especialidades'
     | '/insignias'
     | '/jovens'
     | '/lote'
+    | '/admin/acolhida'
+    | '/admin/eixos'
+    | '/admin/especialidades'
+    | '/admin/insignias'
+    | '/admin/jovens'
+    | '/admin/pontuacao'
+    | '/admin/presenca'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcolhidaRoute: typeof AcolhidaRoute
+  AdminRoute: typeof AdminRouteWithChildren
   EixosRoute: typeof EixosRoute
   EspecialidadesRoute: typeof EspecialidadesRoute
   InsigniasRoute: typeof InsigniasRoute
@@ -135,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/acolhida'
       fullPath: '/acolhida'
       preLoaderRoute: typeof AcolhidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/eixos': {
@@ -172,12 +276,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/acolhida': {
+      id: '/admin/acolhida'
+      path: '/acolhida'
+      fullPath: '/admin/acolhida'
+      preLoaderRoute: typeof AdminAcolhidaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/eixos': {
+      id: '/admin/eixos'
+      path: '/eixos'
+      fullPath: '/admin/eixos'
+      preLoaderRoute: typeof AdminEixosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/especialidades': {
+      id: '/admin/especialidades'
+      path: '/especialidades'
+      fullPath: '/admin/especialidades'
+      preLoaderRoute: typeof AdminEspecialidadesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/insignias': {
+      id: '/admin/insignias'
+      path: '/insignias'
+      fullPath: '/admin/insignias'
+      preLoaderRoute: typeof AdminInsigniasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/jovens': {
+      id: '/admin/jovens'
+      path: '/jovens'
+      fullPath: '/admin/jovens'
+      preLoaderRoute: typeof AdminJovensRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/pontuacao': {
+      id: '/admin/pontuacao'
+      path: '/pontuacao'
+      fullPath: '/admin/pontuacao'
+      preLoaderRoute: typeof AdminPontuacaoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/presenca': {
+      id: '/admin/presenca'
+      path: '/presenca'
+      fullPath: '/admin/presenca'
+      preLoaderRoute: typeof AdminPresencaRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAcolhidaRoute: typeof AdminAcolhidaRoute
+  AdminEixosRoute: typeof AdminEixosRoute
+  AdminEspecialidadesRoute: typeof AdminEspecialidadesRoute
+  AdminInsigniasRoute: typeof AdminInsigniasRoute
+  AdminJovensRoute: typeof AdminJovensRoute
+  AdminPontuacaoRoute: typeof AdminPontuacaoRoute
+  AdminPresencaRoute: typeof AdminPresencaRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAcolhidaRoute: AdminAcolhidaRoute,
+  AdminEixosRoute: AdminEixosRoute,
+  AdminEspecialidadesRoute: AdminEspecialidadesRoute,
+  AdminInsigniasRoute: AdminInsigniasRoute,
+  AdminJovensRoute: AdminJovensRoute,
+  AdminPontuacaoRoute: AdminPontuacaoRoute,
+  AdminPresencaRoute: AdminPresencaRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcolhidaRoute: AcolhidaRoute,
+  AdminRoute: AdminRouteWithChildren,
   EixosRoute: EixosRoute,
   EspecialidadesRoute: EspecialidadesRoute,
   InsigniasRoute: InsigniasRoute,

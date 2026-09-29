@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// Operações permitidas no banco oficial da tropa (projeto externo).
 export const TABELAS = [
   "escoteiros",
   "eixos",
@@ -33,13 +32,12 @@ export const extDb = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => schema.parse(d))
   .handler(async ({ data, context }) => {
     const { createClient } = await import("@supabase/supabase-js");
-    const url = process.env["EXT_SUPABASE_URL"];
-    const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"];
+    const url = process.env["EXT_SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"] || process.env["VITE_SUPABASE_ANON_KEY"];
     if (!url || !key) throw new Error("Banco oficial não configurado");
 
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    // Identifica o usuário atual pelo e-mail do token para validação de segurança
     const email = String((context.claims as Record<string, unknown>)["email"] ?? "")
       .trim()
       .toLowerCase();
@@ -74,7 +72,6 @@ export const extDb = createServerFn({ method: "POST" })
 
     if (data.op !== "select" && somenteLeitura) throw new Error("Tabela somente leitura");
 
-    // --- BLINDAGEM COMPLETA DE SEGURANÇA E PRIVACIDADE ---
     const tabelasPessoais = [
       "acolhida_progresso",
       "progresso_acoes",
@@ -90,7 +87,7 @@ export const extDb = createServerFn({ method: "POST" })
       if (tabelasPessoais.includes(data.tabela)) {
         targetEscoteiroId = meuId;
         if (data.op !== "select" && data.valores) {
-          delete data.valores["validado_por"]; // Impede auto-validação
+          delete data.valores["validado_por"];
           data.valores["escoteiro_id"] = meuId;
         }
       } else if (data.tabela === "escoteiros") {
@@ -109,9 +106,7 @@ export const extDb = createServerFn({ method: "POST" })
         targetEscoteiroId = data.filtros["escoteiro_id"];
       }
     }
-    // ----------------------------------------------------
 
-    // --- EXECUÇÃO SEGURA DA QUERY ---
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any;
 
@@ -168,34 +163,37 @@ export const extDb = createServerFn({ method: "POST" })
     return JSON.stringify(rows ?? []);
   });
 
-// Identifica o membro da tropa a partir do e-mail autenticado (lista branca).
 export const meuMembro = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const email = String((context.claims as Record<string, unknown>)["email"] ?? "")
+    const userEmail = String((context.claims as Record<string, unknown>)["email"] ?? "")
       .trim()
       .toLowerCase();
-    if (!email) return JSON.stringify(null);
+    
+    if (!userEmail) return JSON.stringify(null);
 
     const { createClient } = await import("@supabase/supabase-js");
-    const url = process.env["EXT_SUPABASE_URL"];
-    const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"];
-    if (!url || !key) throw new Error("Banco oficial não configurado");
+    const url = process.env["EXT_SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const key = process.env["EXT_SUPABASE_SERVICE_ROLE_KEY"] || process.env["VITE_SUPABASE_ANON_KEY"];
+    if (!url || !key) throw new Error("Banco não configurado");
+
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
     const { data, error } = await db
       .from("escoteiros")
       .select("id, nome_completo, patrulha, perfil, email")
-      .ilike("email", email)
+      .ilike("email", userEmail)
       .limit(1);
+
     if (error) throw new Error(error.message);
     const row = data?.[0];
     if (!row) return JSON.stringify(null);
+    
     return JSON.stringify({
       id: row["id"],
       nome: row["nome_completo"],
       patrulha: row["patrulha"] ?? null,
       perfil: String(row["perfil"] ?? "ESCOTEIRO").toUpperCase(),
-      email: row["email"] ?? email,
+      email: row["email"] ?? userEmail,
     });
   });
